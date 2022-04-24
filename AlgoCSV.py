@@ -46,6 +46,9 @@ except IOError: #Create empty list and dictionaries for storing info
     groupDB = {}
     prerunTxnCount = 0
     asaDB = {}
+    ACSVFunc.importAlgoRolo()
+    addressDB = ACSVFunc.loadDB('resources/addressDB.json')
+    appDB = ACSVFunc.loadDB('resources/appDB.json')
     freshDB = 'True'
         
 
@@ -131,7 +134,7 @@ for txnID in txnOrder:  #check each txn in chronological order
     txnDetails = ACSVFunc.txnTypeDetails(txnRaw) #and txn sub-type specific details
     
     #Individual txn
-    txnPartner = ACSVFunc.partnerIDCheck(txnRaw, wallet)
+    txnPartner = ACSVFunc.partnerIDCheck(txnRaw, wallet, addressDB, appDB)
     if txnPartner != '':
         #print(txnPartner)
         txnPartners.update({txnID: txnPartner})
@@ -139,7 +142,7 @@ for txnID in txnOrder:  #check each txn in chronological order
         
     #Group IDs
     if 'group' in txnRaw: 
-        groupDef = ACSVFunc.partnerIDCheck(txnRaw, wallet) #check txn for group defining specifics
+        groupDef = ACSVFunc.partnerIDCheck(txnRaw, wallet, addressDB, appDB) #check txn for group defining specifics
         if txnRaw['group'] not in groupDB:  #NEW Group ID
             workingGroup = txnRaw['group']  #track current group ID
             if groupDef != '':  #if group can be defined by this txn

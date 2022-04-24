@@ -21,22 +21,30 @@ def loadDB(fileName):
 fileDir = os.path.dirname(os.path.realpath('__file__'))
 
 #------------# Known IDs
-try:
-    addressDB = loadDB('AlgoAddressDB.json')
-    appDB = loadDB('AlgoAppDB.json')
-    print('Loaded App and Address DBs')
-except:
-    try:
-        addressDB = loadDB('resources/AlgoAddressDB.json')
-        appDB = loadDB('resources/AlgoAppDB.json')
-        print('Loaded App and Address DBs from resources')
-    except:
-        addressDB = {}
-        appDB = {}
-        print('blank App and Address DBs')
-    pass
 
-            
+def importAlgoRolo():
+    try:
+        addressDB = loadDB('AlgoAddressDB.json')
+        appDB = loadDB('AlgoAppDB.json')
+        print('Loaded App and Address DBs')
+    except:
+        try:
+            addressDB = loadDB('resources/AlgoAddressDB.json')
+            appDB = loadDB('resources/AlgoAppDB.json')
+            print('Loaded App and Address DBs from resources')
+        except:
+            print('Downloading addressDB and appDB from github (AlgoRolo)')
+            r = requests.get('https://raw.githubusercontent.com/HashingSlash/AlgoRolo/main/AlgoAddressDB.json')            
+            addressDB = r.json()
+            r = requests.get('https://raw.githubusercontent.com/HashingSlash/AlgoRolo/main/AlgoAppDB.json')
+            appDB = r.json()
+            saveDB(addressDB, 'resources/addressDB')
+            saveDB(appDB, 'resources/appDB')
+            print('Success')
+        pass
+
+
+
 
 #------------# TXN Check
 def asaIDCheck(txnRaw, asaDB):
@@ -63,7 +71,7 @@ def txnTypeDetails(txnRaw):
 
 #------------# Group Checking
 #def groupIDCheck(txnRaw, groupDB, wallet):
-def partnerIDCheck(txnRaw, wallet):
+def partnerIDCheck(txnRaw, wallet, addressDB, appDB):
     result = ''
 
     if txnRaw['sender'] in addressDB: result = addressDB[txnRaw['sender']]
