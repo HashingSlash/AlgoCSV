@@ -62,20 +62,22 @@ def txnTypeDetails(txnRaw):
         return txnRaw['application-transaction']
 
 #------------# Group Checking
-def groupIDCheck(txnRaw, groupDB, wallet):
+#def groupIDCheck(txnRaw, groupDB, wallet):
+def partnerIDCheck(txnRaw, wallet):
+    result = ''
 
-    if txnRaw['sender'] in addressDB: return addressDB[txnRaw['sender']]
+    if txnRaw['sender'] in addressDB: result = addressDB[txnRaw['sender']]
     txnDetails = txnTypeDetails(txnRaw)
     if 'receiver' in txnDetails:
-        if txnDetails['receiver'] in addressDB: return addressDB[txnDetails['receiver']]
+        if txnDetails['receiver'] in addressDB: result = addressDB[txnDetails['receiver']]
     
     
     if 'note' in txnRaw:
         decodedNote = str(base64.b64decode(txnRaw['note']))
-        if txnRaw['note'] == "YWIyLmdhbGxlcnk=": return ['ab2.gallery']
-        elif txnRaw['note'] == "TWFuYWdlcjogQ2xhaW0gcmV3YXJkcw==": return ['AlgoFi', 'Claim Rewards']
-        elif wallet in decodedNote: return ['Algodex']
-        elif 'RIO Rewards' in decodedNote: return ['RIO', 'Rewards']
+        if txnRaw['note'] == "YWIyLmdhbGxlcnk=": result = ['ab2.gallery']
+        elif txnRaw['note'] == "TWFuYWdlcjogQ2xhaW0gcmV3YXJkcw==": result = ['AlgoFi', 'Claim Rewards']
+        elif wallet in decodedNote: result = ['Algodex']
+        elif 'RIO Rewards' in decodedNote: result = ['RIO', 'Rewards']
         #else: print(decodedNote)
                    
         
@@ -85,11 +87,7 @@ def groupIDCheck(txnRaw, groupDB, wallet):
             txnLsd = txnRaw['local-state-delta'][0]
             if 'delta' in txnLsd:
                 txnLsdDelta = txnLsd['delta'][0]
-                if txnLsdDelta['key'] == 'dXNh': return ['AlgoFi', 'Opt in']
-            #print('manager')
-            #print(txnRaw['id'])
-            
-
+                if txnLsdDelta['key'] == 'dXNh': result = ['AlgoFi', 'Opt in']
 
         
 
@@ -98,54 +96,40 @@ def groupIDCheck(txnRaw, groupDB, wallet):
         if 'application-args' in txnDetails:
             appArg = txnDetails['application-args']
             if appArg != []:
-                if appArg[0] == 'Ym9vdHN0cmFw': return  ['Tinyman', 'Bootstrap Pool']
+                if appArg[0] == 'Ym9vdHN0cmFw': result =   ['Tinyman', 'Bootstrap Pool']
                 elif appArg[0] == 'c3dhcA==':
-                    if appArg[1] == 'Zmk=': return  ['Tinyman', 'Trade: Sell']
-                    elif appArg[1] ==  'Zm8=': return  ['Tinyman', 'Trade: Buy']
-                elif appArg[0] == 'bWludA==': return  ['Tinyman', 'LP Mint']
-                elif appArg[0] == 'YnVybg==': return  ['Tinyman', 'LP Burn']
-                elif appArg[0] == 'cmVkZWVt': return  ['Tinyman', 'Redeem slippage']
+                    if appArg[1] == 'Zmk=': result =   ['Tinyman', 'Trade: Sell']
+                    elif appArg[1] ==  'Zm8=': result =   ['Tinyman', 'Trade: Buy']
+                elif appArg[0] == 'bWludA==': result =   ['Tinyman', 'LP Mint']
+                elif appArg[0] == 'YnVybg==': result =   ['Tinyman', 'LP Burn']
+                elif appArg[0] == 'cmVkZWVt': result =   ['Tinyman', 'Redeem slippage']
 
-                elif appArg[0] == 'U1dBUA==': return  ['Pact', 'Swap']
-                elif appArg[0] == 'QURETElR': return  ['Pact', 'LP Mint']
-                elif appArg[0] == 'UkVNTElR': return  ['Pact', 'LP Unmint']
-                elif appArg[0] == 'ZXhlY3V0ZQ==': return  ['Algodex']
-                elif appArg[0] == 'ZXhlY3V0ZV93aXRoX2Nsb3Nlb3V0': return  ['Algodex']
+                elif appArg[0] == 'U1dBUA==': result =   ['Pact', 'Swap']
+                elif appArg[0] == 'QURETElR': result =   ['Pact', 'LP Mint']
+                elif appArg[0] == 'UkVNTElR': result =   ['Pact', 'LP Unmint']
+                elif appArg[0] == 'ZXhlY3V0ZQ==': result =   ['Algodex']
+                elif appArg[0] == 'ZXhlY3V0ZV93aXRoX2Nsb3Nlb3V0': result =   ['Algodex']
 
-                elif appArg[0] == 'RA==': return  ['Yieldly', 'Stake: ALGO - NLL']
-                elif appArg[0] == 'Uw==': return  ['Yieldly', 'Stake: t3']
-                elif appArg[0] == 'Vw==': return  ['Yieldly', 'Unstake: t3']
-                elif appArg[0] == 'Q0E=': return  ['Yieldly', 'Claim: t3']
-                elif appArg[0] == 'Y2xvY2tfb3V0': return  ['Yieldly', 'Opt Out: t3']
-                elif appArg[0] == 'c3Rha2U=': return  ['Yieldly', 'Stake: t5']
-                elif appArg[0] == 'Y2xhaW0=': return  ['Yieldly', 'Claim: t5']
-                elif appArg[0] == 'YmFpbA==': return  ['Yieldly', 'Opt Out: t5']
+                elif appArg[0] == 'RA==': result =   ['Yieldly', 'Stake: ALGO - NLL']
+                elif appArg[0] == 'Uw==': result =   ['Yieldly', 'Stake: t3']
+                elif appArg[0] == 'Vw==': result =   ['Yieldly', 'Unstake: t3']
+                elif appArg[0] == 'Q0E=': result =   ['Yieldly', 'Claim: t3']
+                elif appArg[0] == 'Y2xvY2tfb3V0': result =   ['Yieldly', 'Opt Out: t3']
+                elif appArg[0] == 'c3Rha2U=': result =   ['Yieldly', 'Stake: t5']
+                elif appArg[0] == 'Y2xhaW0=': result =   ['Yieldly', 'Claim: t5']
+                elif appArg[0] == 'YmFpbA==': result =   ['Yieldly', 'Opt Out: t5']
 
-                elif appArg[0] == 'YmEybw==': return  ['AlgoFi', 'LP Burn']
-                elif appArg[0] == 'cnBhMXI=': return  ['AlgoFi', 'LP Mint']
-
-        if str(txnDetails['application-id']) in appDB:
-            result = appDB[str(txnDetails['application-id'])]
-            return result[0]
+                elif appArg[0] == 'YmEybw==': result =   ['AlgoFi', 'LP Burn']
+                elif appArg[0] == 'cnBhMXI=': result =   ['AlgoFi', 'LP Mint']
 
 
         if 'foreign-apps' in txnDetails and len(txnDetails['foreign-apps']) > 0:
             foreignApps = txnDetails['foreign-apps']
             if str(foreignApps[0]) in appDB:
                 result = appDB[str(foreignApps[0])]
-                return result[0]
-            #else: print(foreignApps)
-        #else: print('no fApps')
-                    
-                
-    #if txnRaw['group'] in groupDB: print(groupDB[txnRaw['group']])
-    #else:
-    #    if txnRaw['tx-type'] == 'appl':
-    #        if 'application-args' in txnDetails:
-    #            if appArg != []: print(base64.b64decode(str(appArg[0])))
-    #            else: print(appArg)
 
-#elif txnRaw['group'] in groupDB: print(groupDB[txnRaw['group']])
-    #print(txnRaw['id'])
-    return ''
+        if str(txnDetails['application-id']) in appDB:
+            result = appDB[str(txnDetails['application-id'])]
+
+    return result
 

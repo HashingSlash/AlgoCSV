@@ -117,8 +117,11 @@ for asaID in asaFetchList:
 ACSVFunc.saveDB(asaDB, 'resources/asaDB')
 
 #------------# Transaction Checking
-#Check txn groups for identifying details.
-print('checking groups - main pass (Quick)')
+
+
+#Check txns for identifying details.
+print('checking txns - main pass (Quick)')
+txnPartners = {}
 workingGroup = ''
 newGroupCount = 0
 tinymanPools = []   #track tinyman pool addressess. This can help define pool bootstrap txns much faster
@@ -126,8 +129,17 @@ recheck = []    #use infomation gathered in the first pass to help on a second p
 for txnID in txnOrder:  #check each txn in chronological order
     txnRaw = txnDB[txnID] #load txn instance
     txnDetails = ACSVFunc.txnTypeDetails(txnRaw) #and txn sub-type specific details
+    
+    #Individual txn
+    txnPartner = ACSVFunc.partnerIDCheck(txnRaw, wallet)
+    if txnPartner != '':
+        #print(txnPartner)
+        txnPartners.update({txnID: txnPartner})
+
+        
+    #Group IDs
     if 'group' in txnRaw: 
-        groupDef = ACSVFunc.groupIDCheck(txnRaw, groupDB, wallet) #check txn for group defining specifics
+        groupDef = ACSVFunc.partnerIDCheck(txnRaw, wallet) #check txn for group defining specifics
         if txnRaw['group'] not in groupDB:  #NEW Group ID
             workingGroup = txnRaw['group']  #track current group ID
             if groupDef != '':  #if group can be defined by this txn
@@ -141,19 +153,6 @@ for txnID in txnOrder:  #check each txn in chronological order
         if groupDef != '' and not isinstance(groupDef, str): #if groupDef is not blank or str, it is a list
             groupDB[txnRaw['group']] = groupDef     #ensure up to date definition is store. overwrite string with list but not vice-versa
 
-
-        ####ALGOFI TESTING
-        #if 'AlgoFi' in groupDef:
-        #    print(txnRaw['group'])
-        #    if txnRaw['tx-type'] == 'appl':
-        #        print(groupDef)
-        #        if 'local-state-delta' in txnRaw:
-        #            txnLSD = txnRaw['local-state-delta']
-        #            #print(txnLSD)
-        #            if 'delta' in txnLSD[0]:
-        #               txnLSD0 = txnLSD[0]
-        #                print(txnLSD0['delta'])
-        #                print('\n')
 
 freshDB = 'False'
 print('checking groups - second pass (Quick)')      #second pass, uses databases built on first pass to define groups not returning enough information initially.
@@ -176,8 +175,6 @@ if newGroupCount > 0: print('added: ' + str(newGroupCount) + ' groups to groupDB
 ACSVFunc.saveDB(groupDB, 'resources/groupDB')
 
 #------------# Row Building
-
-
 
 
 print('\n')
