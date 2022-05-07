@@ -26,7 +26,7 @@ except IOError: #Wallet load failed. prompt user to imput
 
 #Shorten wallet ID
 walletNameCut = wallet.zfill(4)
-walletName = walletNameCut[:4] + '.Wallet.' + walletNameCut[-4:]
+walletName = walletNameCut[:4] + '...' + walletNameCut[-4:]
 
     
 #try load stored transaction and group databases, or make empty ones
@@ -35,6 +35,8 @@ try:
     txnOrder = txnDB['txnOrder']
     groupDB = ACSVFunc.loadDB('resources/groupDB.json')
     asaDB = ACSVFunc.loadDB('resources/asaDB.json')
+    addressDB = ACSVFunc.loadDB('resources/addressDB.json')
+    appDB = ACSVFunc.loadDB('resources/appDB.json')
     prerunTxnCount = len(txnOrder)
     print(str(len(txnOrder)) + ' txns loaded')
     print(str(len(groupDB.keys())) + ' groups loaded')
@@ -124,7 +126,6 @@ ACSVFunc.saveDB(asaDB, 'resources/asaDB')
 
 #Check txns for identifying details.
 print('checking txns - main pass (Quick)')
-txnPartners = {}
 workingGroup = ''
 newGroupCount = 0
 tinymanPools = []   #track tinyman pool addressess. This can help define pool bootstrap txns much faster
@@ -132,17 +133,11 @@ recheck = []    #use infomation gathered in the first pass to help on a second p
 for txnID in txnOrder:  #check each txn in chronological order
     txnRaw = txnDB[txnID] #load txn instance
     txnDetails = ACSVFunc.txnTypeDetails(txnRaw) #and txn sub-type specific details
-    
-    #Individual txn
-    txnPartner = ACSVFunc.partnerIDCheck(txnRaw, wallet, addressDB, appDB)
-    if txnPartner != '':
-        #print(txnPartner)
-        txnPartners.update({txnID: txnPartner})
 
         
     #Group IDs
     if 'group' in txnRaw: 
-        groupDef = ACSVFunc.partnerIDCheck(txnRaw, wallet, addressDB, appDB) #check txn for group defining specifics
+        groupDef = ACSVFunc.groupIDCheck(txnRaw, wallet, addressDB, appDB) #check txn for group defining specifics
         if txnRaw['group'] not in groupDB:  #NEW Group ID
             workingGroup = txnRaw['group']  #track current group ID
             if groupDef != '':  #if group can be defined by this txn
@@ -179,6 +174,49 @@ ACSVFunc.saveDB(groupDB, 'resources/groupDB')
 
 #------------# Row Building
 
+print('Begin Row Building\n')
 
+algocsv = open('ALGO.csv', 'w', newline='', encoding='utf-8')
+writer = csv.writer(algocsv)
+row = ['Type', 'Buy Amount', 'Buy Cur.',
+       'Sell Amount', 'Sell Cur.',
+       'Fee Amount', 'Fee Cur.',
+       'Exchange',  #Title of column. Will contain shortened wallet ID to aid multiwallet.
+       'Trade Group',   #Platform. 
+       'Comment',   #Txn or Group ID, situational.
+       'Date']
+writer.writerow(row)
+workingGroup = ''
+firstRow = 'y'
+
+for txnID in txnOrder:
+    txnRaw = txnDB[txnID]
+    txnDetails = ACSVFunc.txnTypeDetails(txnRaw)
+    row = ACSVFunc.txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB)
+    
+    if 'group' not in txnRaw or txnRaw['group'] != workingGroup:
+        if firstRow != 'y':
+            #this row not related to previous group
+            #SAVE GROUP ROW HERE-------------------
+            #MAKE BLANK GROUP ROW
+            pass
+        else: #prevents first row triggering group saving
+            firstRow = 'n'
+
+
+    if 'group' in txnRaw and txnRaw['group'] in groupDB:
+        if workingGroup != txnRaw['group']:
+            #print('\n')
+            #print('starting new group: ' + txnRaw['group'] + ': ' + str(groupDB[txnRaw['group']]))
+            workingGroup = txnRaw['group']
+    else:
+        #Single Row
+        #print('\n')
+        pass
+    
+    #print(row)
+    writer.writerow(row)
+
+algocsv.close()
 print('\n')
 print('Job Done!')
