@@ -169,17 +169,22 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB):
 
     return result
 
+##--------##        Row building
+
 def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB):
     txnDetails = txnTypeDetails(txnRaw)
     ###SINGLE TXN PROCESSING
     row = []
+    
     #Type
     row.append(txnRaw['tx-type'])
+    
     #Buy/In Amount
     if 'amount' in txnDetails and txnDetails['receiver'] == wallet:
         row.append(txnDetails['amount'])
     else:
-        row.append('BA')
+        row.append('')
+        
     #Buy/In Cur.
     if 'receiver' in txnDetails and txnDetails['receiver'] == wallet:
         if txnRaw['tx-type'] == 'pay':
@@ -187,43 +192,67 @@ def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB):
         elif txnRaw['tx-type'] == 'axfer' and 'asset-id' in txnDetails:
             row.append(txnDetails['asset-id'])
     else:
-        row.append('BC')
+        row.append('')
+        
     #Sell/Out Amount
     if 'amount' in txnDetails and txnRaw['sender'] == wallet:
         row.append(txnDetails['amount'])
     else:
-        row.append('SA')
+        row.append('')
+        
     #Sell/Out Cur.
     if txnRaw['sender'] == wallet:
         if txnRaw['tx-type'] == 'pay':
             row.append('ALGO')
         elif txnRaw['tx-type'] == 'axfer' and 'asset-id' in txnDetails:
             row.append(txnDetails['asset-id'])
-        else: row.append('SC')
+        else: row.append('')
     else:
-        row.append('SC')
+        row.append('')
+        
     #Fee Amount
     if txnRaw['fee'] > 0:
         row.append(txnRaw['fee'])
     else:
-        row.append('FA')
+        row.append('')
+        
     #Fee Cur.
     if txnRaw['fee'] > 0:
         row.append('ALGO')
     else:
-        row.append('FC')
+        row.append('')
+        
     #Exchange/Wallet ID
     row.append(walletName)
     #Trade Group/Platform 
     row.append(groupIDCheck(txnRaw, wallet, addressDB, appDB))
+    
     #Comment/txnID/groupID
     if 'group' in txnRaw:
         row.append(txnRaw['group'])
     else:
         row.append(txnRaw['id'])
+    
     #Date
     date = str(datetime.datetime.fromtimestamp(txnRaw['round-time']))
     row.append(date)
 
     return row
     
+def rewardsRow(rewards, walletName, txnRaw):
+    return ['Rewards', rewards, 'ALGO',
+            '', '', '', '',
+            walletName, 'Participation Rewards',
+            str(txnRaw['id'] + ' Rewards'),
+            str(datetime.datetime.fromtimestamp(txnRaw['round-time']))]
+
+
+
+
+
+
+
+
+
+
+

@@ -213,7 +213,14 @@ for txnID in txnOrder:
         #Single Row
         #print('\n')
         pass
-    
+
+    ##Participation rewards
+    #When sending
+    if txnRaw['sender'] == wallet and txnRaw['sender-rewards'] > 0:
+        writer.writerow(ACSVFunc.rewardsRow(txnRaw['sender-rewards'], walletName, txnRaw))
+    #When receiving
+    if 'receiver' in txnDetails and txnDetails['receiver'] == wallet and txnRaw['receiver-rewards'] > 0:
+        writer.writerow(ACSVFunc.rewardsRow(txnRaw['receiver-rewards'], walletName, txnRaw))
     #print(row)
     writer.writerow(row)
 
