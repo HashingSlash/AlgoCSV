@@ -43,8 +43,11 @@ def importAlgoRolo():
             print('Success')
         pass
 
-
-
+#------------# wallet ID shortener
+def walletName(wallet):
+    walletNameCut = wallet.zfill(4)
+    walletName = walletNameCut[:4] + '...' + walletNameCut[-4:]
+    return walletName
 
 #------------# TXN Check
 def asaIDCheck(txnRaw, asaDB):
@@ -246,8 +249,35 @@ def rewardsRow(rewards, walletName, txnRaw):
             str(txnRaw['id'] + ' Rewards'),
             str(datetime.datetime.fromtimestamp(txnRaw['round-time']))]
 
-
-
+def innerTxnRow(innerTxn, wallet, walletName, txnRaw):
+    buyAmount = ''
+    buyCur = ''
+    sellAmount = ''
+    sellCur = ''
+    if 'group' in txnRaw:
+        txnName = str(txnRaw['group'] + ': inner txn')
+    else:
+        txnName = str(txnRaw['id'] + ': inner txn')
+    if innerTxn['tx-type'] == 'pay':
+        innerDetails = innerTxn['payment-transaction']
+        innerCur = 'ALGO'
+    elif innerTxn['tx-type'] == 'axfer':
+        innerDetails = innerTxn['asset-transfer-transaction']
+        innerCur = innerDetails['asset-id']
+    else:
+        return ''
+    if innerDetails['receiver'] == wallet:
+        buyAmount = innerDetails['amount']
+        buyCur = innerCur
+    elif innerTxn['sender'] == wallet:
+        sellAmount = innerDetails['amount']
+        sellCur = innerCur
+    if buyAmount != '' or sellAmount != '':
+        return ['inner txn', buyAmount, buyCur,
+                sellAmount, sellCur, '', '',
+                walletName, 'inner txn', str(txnName),
+                str(datetime.datetime.fromtimestamp(txnRaw['round-time']))]
+            
 
 
 

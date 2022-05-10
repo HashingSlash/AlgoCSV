@@ -25,8 +25,7 @@ except IOError: #Wallet load failed. prompt user to imput
     print('Wallet ID saved for next time')
 
 #Shorten wallet ID
-walletNameCut = wallet.zfill(4)
-walletName = walletNameCut[:4] + '...' + walletNameCut[-4:]
+walletName = ACSVFunc.walletName(wallet)
 
     
 #try load stored transaction and group databases, or make empty ones
@@ -214,6 +213,16 @@ for txnID in txnOrder:
         #print('\n')
         pass
 
+    if 'inner-txns' in txnRaw:
+        innerIDCut = txnID.zfill(4)
+        innerID = innerIDCut[:4] + '...inner-txn...' + innerIDCut[-4:]
+        innerTxnList = txnRaw['inner-txns']
+        for innerTxn in innerTxnList:
+            innerRow = ACSVFunc.innerTxnRow(innerTxn, wallet, walletName, txnRaw)
+            if isinstance(innerRow, list):
+                writer.writerow(innerRow)
+            ##Add function to pass inner txn and return row for writer
+    
     ##Participation rewards
     #When sending
     if txnRaw['sender'] == wallet and txnRaw['sender-rewards'] > 0:
