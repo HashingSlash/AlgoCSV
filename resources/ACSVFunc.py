@@ -50,13 +50,17 @@ def walletName(wallet):
     return walletName
 
 #------------# TXN Check
-def asaIDCheck(txnRaw, asaDB):
+def asaIDCheck(txnRaw, asaDB, asaFetchList):
     if txnRaw['tx-type'] == 'axfer':
         txnDetails = txnRaw['asset-transfer-transaction']
         #if it is not already in the asaDB
-        if str(txnDetails['asset-id']) not in asaDB:
+        if str(txnDetails['asset-id']) not in asaDB and str(txnDetails['asset-id']) not in asaFetchList:
             #add to asset list. Fetch all missing assets after raw txns
             return txnDetails['asset-id']
+        else:
+            return ''
+    else:
+        return ''
 
 def txnTypeDetails(txnRaw):
     if txnRaw['tx-type'] == 'pay':
@@ -71,6 +75,34 @@ def txnTypeDetails(txnRaw):
         pass
     if txnRaw['tx-type'] == 'appl':
         return txnRaw['application-transaction']
+
+#------------# 
+def asaRequest(asaID):
+    #get asa response
+    asaResponse = requests.get('https://algoindexer.algoexplorerapi.io/v2/assets/' + str(asaID))
+    asaJSON = asaResponse.json()
+    #set required details to vars
+    if 'asset' not in asaJSON:
+        asaName = asaID
+        asaTick = asaID
+        asaDecimals = 0
+    else:
+        asaDetails = asaJSON['asset']
+        asaParams = asaDetails['params']
+        asaDecimals = asaParams['decimals']
+        if 'unit-name' in asaParams:
+            asaTick = asaParams['unit-name']
+        else:
+            asaTick = asaID
+        if 'name' in asaParams: asaName = asaParams['name']
+        else: asaName = asaID
+    #build asa dictionary entry
+    details = {"id"         : asaID,
+               "name"       : asaName,
+               "ticker"     : asaTick,
+               "decimals"   : asaDecimals}
+    #return asa dictionary entry
+    return details    
 
 #------------# Partner Checking
 def partnerIDCheck(txnRaw, addressDB, appDB):

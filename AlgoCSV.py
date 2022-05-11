@@ -69,7 +69,8 @@ for getTxn in txnJson['transactions']:  #for each txn returned
         newTxnIDs.insert(0, getTxn['id'])    #add to start of Ordered list for new entries. 
         getTxn.update({'wallet' : wallet})  #add wallet ID to this txn instance. 
         txnDB.update({getTxn['id']: getTxn})    #add this txn instance to txnDB
-        asaFetchList.append(str(ACSVFunc.asaIDCheck(getTxn, asaDB)))    #if this is the first time seeing this ASA, log to fetch its details.
+        asaCheck = str(ACSVFunc.asaIDCheck(getTxn, asaDB, asaFetchList))
+        if asaCheck != '': asaFetchList.append(asaCheck)    #if this is the first time seeing this ASA, log to fetch its details.
     elif getTxn['id'] in txnDB:   #If the txn is already in the txnDB, stop processing new txns.
         txnCurrent = 'true'
         continue
@@ -89,7 +90,8 @@ while 'next-token' in txnJson and txnCurrent == 'false':
             newTxnIDs.insert(0, getTxn['id'])
             getTxn.update({'wallet' : wallet})
             txnDB.update({getTxn['id']: getTxn})
-            asaFetchList.append(str(ACSVFunc.asaIDCheck(getTxn, asaDB)))
+            asaCheck = str(ACSVFunc.asaIDCheck(getTxn, asaDB, asaFetchList))
+            if asaCheck != '': asaFetchList.append(asaCheck)
         elif getTxn['id'] in txnDB and txnCurrent == 'false':
             txnCurrent = 'true'
 
@@ -111,12 +113,10 @@ print('added : ' + str(txnCountDelta) + ' txns to txnDB.')
 #MOVE TO FUNCTIONS
 #Solved in older iterations of AlgoCSV
 #Implement later in process
-def getAsa(asaID):
-    details = {'id' : asaID}
-    return details
 
 for asaID in asaFetchList:
-    asaDB.update({asaID: getAsa(asaID)})
+    print('Requesting info - ASA ID: ' + str(asaID))
+    asaDB.update({asaID: ACSVFunc.asaRequest(asaID)})
 
 ACSVFunc.saveDB(asaDB, 'resources/asaDB')
 
