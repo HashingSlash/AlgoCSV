@@ -191,7 +191,7 @@ firstRow = 'y'
 for txnID in txnOrder:
     txnRaw = txnDB[txnID]
     txnDetails = ACSVFunc.txnTypeDetails(txnRaw)
-    row = ACSVFunc.txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB)
+    row = ACSVFunc.txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB)
     
     if 'group' not in txnRaw or txnRaw['group'] != workingGroup:
         if firstRow != 'y':
@@ -218,7 +218,7 @@ for txnID in txnOrder:
         innerID = innerIDCut[:4] + '...inner-txn...' + innerIDCut[-4:]
         innerTxnList = txnRaw['inner-txns']
         for innerTxn in innerTxnList:
-            innerRow = ACSVFunc.innerTxnRow(innerTxn, wallet, walletName, txnRaw)
+            innerRow = ACSVFunc.innerTxnRow(innerTxn, wallet, walletName, txnRaw, asaDB)
             if isinstance(innerRow, list):
                 writer.writerow(innerRow)
             ##Add function to pass inner txn and return row for writer
@@ -226,10 +226,10 @@ for txnID in txnOrder:
     ##Participation rewards
     #When sending
     if txnRaw['sender'] == wallet and txnRaw['sender-rewards'] > 0:
-        writer.writerow(ACSVFunc.rewardsRow(txnRaw['sender-rewards'], walletName, txnRaw))
+        writer.writerow(ACSVFunc.rewardsRow(txnRaw['sender-rewards'], walletName, txnRaw, asaDB))
     #When receiving
     if 'receiver' in txnDetails and txnDetails['receiver'] == wallet and txnRaw['receiver-rewards'] > 0:
-        writer.writerow(ACSVFunc.rewardsRow(txnRaw['receiver-rewards'], walletName, txnRaw))
+        writer.writerow(ACSVFunc.rewardsRow(txnRaw['receiver-rewards'], walletName, txnRaw, asaDB))
     #print(row)
     writer.writerow(row)
 

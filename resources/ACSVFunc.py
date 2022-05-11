@@ -203,85 +203,97 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB):
                 elif appArg[0] == 'cnBhMXI=': result = ['AlgoFi', 'LP Mint']
 
     return result
-
 ##--------##        Row building
-
-def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB):
+def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB):
     txnDetails = txnTypeDetails(txnRaw)
-    ###SINGLE TXN PROCESSING
-    row = []
+    ###SINGLE TXN ROW
     
     #Type
-    row.append(txnRaw['tx-type'])
+    txnType = txnRaw['tx-type']
     
     #Buy/In Amount
     if 'amount' in txnDetails and txnDetails['receiver'] == wallet:
-        row.append(txnDetails['amount'])
+        buyAmount = txnDetails['amount']
     else:
-        row.append('')
+        buyAmount = ''
         
     #Buy/In Cur.
     if 'receiver' in txnDetails and txnDetails['receiver'] == wallet:
         if txnRaw['tx-type'] == 'pay':
-            row.append('ALGO')
+            buyCur = 'ALGO'
         elif txnRaw['tx-type'] == 'axfer' and 'asset-id' in txnDetails:
-            row.append(txnDetails['asset-id'])
+            buyCur = str(txnDetails['asset-id'])
+        else: buyCur = ''
     else:
-        row.append('')
+        buyCur = ''
         
     #Sell/Out Amount
     if 'amount' in txnDetails and txnRaw['sender'] == wallet:
-        row.append(txnDetails['amount'])
+        sellAmount = txnDetails['amount']
     else:
-        row.append('')
+        sellAmount = ''
         
     #Sell/Out Cur.
     if txnRaw['sender'] == wallet:
         if txnRaw['tx-type'] == 'pay':
-            row.append('ALGO')
+            sellCur = 'ALGO'
         elif txnRaw['tx-type'] == 'axfer' and 'asset-id' in txnDetails:
-            row.append(txnDetails['asset-id'])
-        else: row.append('')
+            sellCur = str(txnDetails['asset-id'])
+        else: sellCur = ''
     else:
-        row.append('')
+        sellCur = ''
         
     #Fee Amount
     if txnRaw['fee'] > 0:
-        row.append(txnRaw['fee'])
+        feeAmount = txnRaw['fee']
     else:
-        row.append('')
+        feeAmount = ''
         
     #Fee Cur.
     if txnRaw['fee'] > 0:
-        row.append('ALGO')
+        feeCur = 'ALGO'
     else:
-        row.append('')
+        feeCur = ''
         
     #Exchange/Wallet ID
-    row.append(walletName)
+    
     #Trade Group/Platform 
-    row.append(groupIDCheck(txnRaw, wallet, addressDB, appDB))
+    tradeGroup = groupIDCheck(txnRaw, wallet, addressDB, appDB)
     
     #Comment/txnID/groupID
     if 'group' in txnRaw:
-        row.append(txnRaw['group'])
+        comment = str('G- ' + txnRaw['group'])
     else:
-        row.append(txnRaw['id'])
+        comment = str('T- ' + txnRaw['id'])
     
     #Date
     date = str(datetime.datetime.fromtimestamp(txnRaw['round-time']))
-    row.append(date)
+
+    if buyAmount != '':
+        buyAmount = decimal(buyCur, asaDB, buyAmount)
+    if buyCur in asaDB:
+        asaDetails = asaDB[buyCur]
+        buyCur = asaDetails['ticker']
+    if sellAmount != '':
+        seelAmount = decimal(sellCur, asaDB, sellAmount)
+    if sellCur in asaDB:
+        asaDetails = asaDB[sellCur]
+        sellCur = asaDetails['ticker']
+    
+    row = [txnType, buyAmount, buyCur, sellAmount, sellCur,
+           feeAmount, feeCur, walletName, tradeGroup, comment, date]
 
     return row
     
-def rewardsRow(rewards, walletName, txnRaw):
-    return ['Rewards', rewards, 'ALGO',
+def rewardsRow(rewards, walletName, txnRaw, asaDB):
+    amount = decimal('ALGO', asaDB, rewards)
+    return ['Rewards', amount, 'ALGO',
             '', '', '', '',
             walletName, 'Participation Rewards',
-            str(txnRaw['id'] + ' Rewards'),
+            str('R- ' + txnRaw['id'] + ' Rewards'),
             str(datetime.datetime.fromtimestamp(txnRaw['round-time']))]
 
-def innerTxnRow(innerTxn, wallet, walletName, txnRaw):
+def innerTxnRow(innerTxn, wallet, walletName, txnRaw, asaDB):
     buyAmount = ''
     buyCur = ''
     sellAmount = ''
@@ -305,13 +317,26 @@ def innerTxnRow(innerTxn, wallet, walletName, txnRaw):
         sellAmount = innerDetails['amount']
         sellCur = innerCur
     if buyAmount != '' or sellAmount != '':
+        buyAmount = decimal(buyCur, asaDB, buyAmount)
+        sellAmount = decimal(buyCur, asaDB, sellAmount)
         return ['inner txn', buyAmount, buyCur,
                 sellAmount, sellCur, '', '',
                 walletName, 'inner txn', str(txnName),
                 str(datetime.datetime.fromtimestamp(txnRaw['round-time']))]
             
 
+def decimal(asaID, asaDB, baseQ):
+    if asaID != 'ALGO':
+        asaDetails = asaDB[str(asaID)]
+        decimal = asaDetails['decimals']
+    else: decimal = 6
 
+    if decimal == 0:
+        return baseQ
+    else:
+        qString = str(baseQ)
+        qStringFilled = qString.zfill(decimal)
+        return qStringFilled[:-decimal] + '.' + qStringFilled[-decimal:]
 
 
 
