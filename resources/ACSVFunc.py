@@ -245,7 +245,7 @@ def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB):
         
     #Fee Amount
     if txnRaw['fee'] > 0:
-        feeAmount = txnRaw['fee']
+        feeAmount = decimal(txnRaw['fee'], 'ALGO', asaDB)
     else:
         feeAmount = ''
         
@@ -270,12 +270,12 @@ def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB):
     date = str(datetime.datetime.fromtimestamp(txnRaw['round-time']))
 
     if buyAmount != '':
-        buyAmount = decimal(buyCur, asaDB, buyAmount)
+        buyAmount = decimal(buyAmount, buyCur, asaDB)
     if buyCur in asaDB:
         asaDetails = asaDB[buyCur]
         buyCur = asaDetails['ticker']
     if sellAmount != '':
-        seelAmount = decimal(sellCur, asaDB, sellAmount)
+        sellAmount = decimal(sellAmount, sellCur, asaDB)
     if sellCur in asaDB:
         asaDetails = asaDB[sellCur]
         sellCur = asaDetails['ticker']
@@ -286,7 +286,7 @@ def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB):
     return row
     
 def rewardsRow(rewards, walletName, txnRaw, asaDB):
-    amount = decimal('ALGO', asaDB, rewards)
+    amount = decimal(rewards, 'ALGO', asaDB)
     return ['Rewards', amount, 'ALGO',
             '', '', '', '',
             walletName, 'Participation Rewards',
@@ -305,29 +305,35 @@ def innerTxnRow(innerTxn, wallet, walletName, txnRaw, asaDB):
     if innerTxn['tx-type'] == 'pay':
         innerDetails = innerTxn['payment-transaction']
         innerCur = 'ALGO'
+        innerTick = 'ALGO'
     elif innerTxn['tx-type'] == 'axfer':
         innerDetails = innerTxn['asset-transfer-transaction']
-        innerCur = innerDetails['asset-id']
+        innerCur = str(innerDetails['asset-id'])
+        if innerCur in asaDB:
+            CurDetails = asaDB[innerCur]
+            innerTick = CurDetails['ticker']
+        else: innerTick = innerCur
     else:
         return ''
     if innerDetails['receiver'] == wallet:
         buyAmount = innerDetails['amount']
-        buyCur = innerCur
+        buyCur = innerTick
     elif innerTxn['sender'] == wallet:
         sellAmount = innerDetails['amount']
-        sellCur = innerCur
+        sellCur = innerTick
+    if buyAmount != '': buyAmount = decimal(buyAmount, innerCur, asaDB)
+    if sellAmount != '': sellAmount = decimal(sellAmount, innerCur, asaDB)
     if buyAmount != '' or sellAmount != '':
-        buyAmount = decimal(buyCur, asaDB, buyAmount)
-        sellAmount = decimal(buyCur, asaDB, sellAmount)
         return ['inner txn', buyAmount, buyCur,
                 sellAmount, sellCur, '', '',
                 walletName, 'inner txn', str(txnName),
                 str(datetime.datetime.fromtimestamp(txnRaw['round-time']))]
             
 
-def decimal(asaID, asaDB, baseQ):
+def decimal(baseQ, asaID, asaDB):
     if asaID != 'ALGO':
         asaDetails = asaDB[str(asaID)]
+        #print(asaDetails)
         decimal = asaDetails['decimals']
     else: decimal = 6
 
