@@ -222,6 +222,8 @@ for txnID in txnOrder:
             if isinstance(innerRow, list):
                 writer.writerow(innerRow)
             ##Add function to pass inner txn and return row for writer
+
+    writer.writerow(row)
     
     ##Participation rewards
     #When sending
@@ -231,7 +233,7 @@ for txnID in txnOrder:
     if 'receiver' in txnDetails and txnDetails['receiver'] == wallet and txnRaw['receiver-rewards'] > 0:
         writer.writerow(ACSVFunc.rewardsRow(txnRaw['receiver-rewards'], walletName, txnRaw, asaDB))
     #print(row)
-    writer.writerow(row)
+    
 
 algocsv.close()
 print('\n')
