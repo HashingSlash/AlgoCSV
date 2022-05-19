@@ -185,54 +185,84 @@ row = ['Type', 'Buy Amount', 'Buy Cur.',
        'Comment',   #Txn or Group ID, situational.
        'Date']
 writer.writerow(row)
+multiRow = {'rewards':[],
+            'txns':[],
+            'date': ''}
 workingGroup = ''
 firstRow = 'y'
 
 for txnID in txnOrder:
     txnRaw = txnDB[txnID]
     txnDetails = ACSVFunc.txnTypeDetails(txnRaw)
+    rewardRow = []
     row = ACSVFunc.txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB)
+
+    ##Participation rewards
+    #When sending
+    if txnRaw['sender'] == wallet and txnRaw['sender-rewards'] > 0:
+        rewardRow = ACSVFunc.rewardsRow(txnRaw['sender-rewards'], walletName, txnRaw, asaDB)
+    #When receiving
+    if 'receiver' in txnDetails and txnDetails['receiver'] == wallet and txnRaw['receiver-rewards'] > 0:
+        rewardRow = ACSVFunc.rewardsRow(txnRaw['receiver-rewards'], walletName, txnRaw, asaDB)
+  
     
     if 'group' not in txnRaw or txnRaw['group'] != workingGroup:
         if firstRow != 'y':
             #this row not related to previous group
             #SAVE GROUP ROW HERE-------------------
+            #print('save group')
+            groupRows = multiRow['txns']
+            for gRow in groupRows:
+                writer.writerow(gRow)
+                
+            if multiRow['rewards'] != []:
+                writer.writerow(multiRow['rewards'])
+
+            if 'Network Operation Fees' in multiRow:
+                netOpFeesRow = ['Other Expense', '', '', '', '',
+                multiRow['Network Operation Fees'], 'ALGO', walletName,
+                'Network Operation Fees', str('F-' + multiRow['groupID']), multiRow['date']]
+                writer.writerow(netOpFeesRow)
+            
             #MAKE BLANK GROUP ROW
-            pass
+            multiRow = {'rewards':[],
+                        'txns':[],
+                        'date': ''}
         else: #prevents first row triggering group saving
             firstRow = 'n'
 
-
-    if 'group' in txnRaw and txnRaw['group'] in groupDB:
-        if workingGroup != txnRaw['group']:
-            #print('\n')
-            #print('starting new group: ' + txnRaw['group'] + ': ' + str(groupDB[txnRaw['group']]))
-            workingGroup = txnRaw['group']
+    
+    if 'group' in txnRaw:
+        #print('\n')
+        #print('starting new group: ' + txnRaw['group'] + ': ' + str(groupDB[txnRaw['group']]))
+        workingGroup = txnRaw['group']
+        multiRow = ACSVFunc.multiRowProcessing(multiRow, row, txnRaw, groupDB)
+        multiRow['groupID'] = txnRaw['group']
+        if 'inner-txns' in txnRaw:
+            innerTxnList = txnRaw['inner-txns']
+            for innerTxn in innerTxnList:
+                innerRow = ACSVFunc.innerTxnRow(innerTxn, wallet, walletName, txnRaw, asaDB, groupDB)
+                if isinstance(innerRow, list):
+                    multiRow = ACSVFunc.multiRowProcessing(multiRow, innerRow, txnRaw, groupDB)
+            
+       
     else:
         #Single Row
         #print('\n')
-        pass
+        
+        writer.writerow(row)
+        
+        if 'inner-txns' in txnRaw:
+            innerTxnList = txnRaw['inner-txns']
+            for innerTxn in innerTxnList:
+                innerRow = ACSVFunc.innerTxnRow(innerTxn, wallet, walletName, txnRaw, asaDB, groupDB)
+                if isinstance(innerRow, list):
+                    writer.writerow(innerRow)
+        if rewardRow != []:
+            writer.writerow(rewardRow)        
 
-    if 'inner-txns' in txnRaw:
-        innerIDCut = txnID.zfill(4)
-        innerID = innerIDCut[:4] + '...inner-txn...' + innerIDCut[-4:]
-        innerTxnList = txnRaw['inner-txns']
-        for innerTxn in innerTxnList:
-            innerRow = ACSVFunc.innerTxnRow(innerTxn, wallet, walletName, txnRaw, asaDB)
-            if isinstance(innerRow, list):
-                writer.writerow(innerRow)
-            ##Add function to pass inner txn and return row for writer
-
-    writer.writerow(row)
     
-    ##Participation rewards
-    #When sending
-    if txnRaw['sender'] == wallet and txnRaw['sender-rewards'] > 0:
-        writer.writerow(ACSVFunc.rewardsRow(txnRaw['sender-rewards'], walletName, txnRaw, asaDB))
-    #When receiving
-    if 'receiver' in txnDetails and txnDetails['receiver'] == wallet and txnRaw['receiver-rewards'] > 0:
-        writer.writerow(ACSVFunc.rewardsRow(txnRaw['receiver-rewards'], walletName, txnRaw, asaDB))
-    #print(row)
+
     
 
 algocsv.close()

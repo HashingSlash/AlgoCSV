@@ -173,23 +173,23 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB):
                         if len(result) == 2: result.append('LP Burn')
                     elif appArg[0] == 'cmVkZWVt':
                         if len(result) == 2: result.append('Redeem slippage')
-                if 'Yieldly' in result:
-                    if appArg[0] == 'RA==':
-                        if len(result) == 2: result.append('Stake: ALGO - NLL')
-                    elif appArg[0] == 'Uw==':
-                        if len(result) == 2: result.append('Stake: t3')
-                    elif appArg[0] == 'Vw==':
-                        if len(result) == 2: result.append('Unstake: t3')
-                    elif appArg[0] == 'Q0E=':
-                        if len(result) == 2: result.append('Claim: t3')
-                    elif appArg[0] == 'Y2xvY2tfb3V0':
-                        if len(result) == 2: result.append('Opt Out: t3')
-                    elif appArg[0] == 'c3Rha2U=':
-                        if len(result) == 2: result.append('Stake: t5')
-                    elif appArg[0] == 'Y2xhaW0=':
-                        if len(result) == 2: result.append('Claim: t5')
-                    elif appArg[0] == 'YmFpbA==':
-                        if len(result) == 2: result.append('Withdraw: t5')
+                #if 'Yieldly' in result:
+                #    if appArg[0] == 'RA==':
+                #        if len(result) == 2: result.append('Stake: ALGO - NLL')
+                #    elif appArg[0] == 'Uw==':
+                #        if len(result) == 2: result.append('Stake: t3')
+                #    elif appArg[0] == 'Vw==':
+                #        if len(result) == 2: result.append('Unstake: t3')
+                #    elif appArg[0] == 'Q0E=':
+                #        if len(result) == 2: result.append('Claim: t3')
+                #    elif appArg[0] == 'Y2xvY2tfb3V0':
+                #        if len(result) == 2: result.append('Opt Out: t3')
+                #    elif appArg[0] == 'c3Rha2U=':
+                #        if len(result) == 2: result.append('Stake: t5')
+                #    elif appArg[0] == 'Y2xhaW0=':
+                #        if len(result) == 2: result.append('Claim: t5')
+                #    elif appArg[0] == 'YmFpbA==':
+                #        if len(result) == 2: result.append('Withdraw: t5')
                     
                 if appArg[0] == 'U1dBUA==': result = ['Pact', 'Swap']
                 elif appArg[0] == 'QURETElR': result = ['Pact', 'LP Mint']
@@ -212,13 +212,14 @@ def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB):
     txnType = txnRaw['tx-type']
     
     #Buy/In Amount
-    if 'amount' in txnDetails and txnDetails['receiver'] == wallet:
+    if 'amount' in txnDetails and txnDetails['amount'] > 0 and txnDetails['receiver'] == wallet:
+        txnType = 'Deposit'
         buyAmount = txnDetails['amount']
     else:
         buyAmount = ''
         
     #Buy/In Cur.
-    if 'receiver' in txnDetails and txnDetails['receiver'] == wallet:
+    if 'receiver' in txnDetails and txnDetails['amount'] > 0 and txnDetails['receiver'] == wallet:
         if txnRaw['tx-type'] == 'pay':
             buyCur = 'ALGO'
         elif txnRaw['tx-type'] == 'axfer' and 'asset-id' in txnDetails:
@@ -228,13 +229,14 @@ def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB):
         buyCur = ''
         
     #Sell/Out Amount
-    if 'amount' in txnDetails and txnRaw['sender'] == wallet:
+    if 'amount' in txnDetails and txnDetails['amount'] > 0 and txnRaw['sender'] == wallet:
+        txnType = 'Withdrawal'
         sellAmount = txnDetails['amount']
     else:
         sellAmount = ''
         
     #Sell/Out Cur.
-    if txnRaw['sender'] == wallet:
+    if txnRaw['sender'] == wallet and 'amount' in txnDetails and txnDetails['amount'] > 0:
         if txnRaw['tx-type'] == 'pay':
             sellCur = 'ALGO'
         elif txnRaw['tx-type'] == 'axfer' and 'asset-id' in txnDetails:
@@ -244,13 +246,13 @@ def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB):
         sellCur = ''
         
     #Fee Amount
-    if txnRaw['fee'] > 0:
+    if txnRaw['fee'] > 0 and txnRaw['sender'] == wallet:
         feeAmount = decimal(txnRaw['fee'], 'ALGO', asaDB)
     else:
         feeAmount = ''
         
     #Fee Cur.
-    if txnRaw['fee'] > 0:
+    if txnRaw['fee'] > 0 and txnRaw['sender'] == wallet:
         feeCur = 'ALGO'
     else:
         feeCur = ''
@@ -262,9 +264,9 @@ def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB):
     
     #Comment/txnID/groupID
     if 'group' in txnRaw:
-        comment = str('G- ' + txnRaw['group'])
+        comment = str(txnRaw['group'])
     else:
-        comment = str('T- ' + txnRaw['id'])
+        comment = str(txnRaw['id'])
     
     #Date
     date = str(datetime.datetime.fromtimestamp(txnRaw['round-time']))
@@ -279,6 +281,14 @@ def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB):
     if sellCur in asaDB:
         asaDetails = asaDB[sellCur]
         sellCur = asaDetails['ticker']
+
+    if buyAmount == '' and sellAmount == '':
+        txnType = 'Other Expense'
+        tradeGroup = 'Network Operation Fees'
+
+    if txnType == 'Deposit' and ('AlgoStake' in tradeGroup or 'The Algo Faucet' in tradeGroup):
+        txnType = 'Staking'
+        tradeGroup = tradeGroup[0]
     
     row = [txnType, buyAmount, buyCur, sellAmount, sellCur,
            feeAmount, feeCur, walletName, tradeGroup, comment, date]
@@ -295,24 +305,30 @@ def rewardsRow(rewards, walletName, txnRaw, asaDB):
         txnName = str('R- G-' + shortGroup[:12] + '...   T- ' + shortTxn[:12] + '...')
     else:
         txnName = str('R- T-' + txnRaw['id'])
-    return ['Rewards', amount, 'ALGO',
+    return ['Staking', amount, 'ALGO',
             '', '', '', '',
             walletName, 'Participation Rewards', txnName,
             str(datetime.datetime.fromtimestamp(txnRaw['round-time']))]
 
-def innerTxnRow(innerTxn, wallet, walletName, txnRaw, asaDB):
+def innerTxnRow(innerTxn, wallet, walletName, txnRaw, asaDB, groupDB):
     buyAmount = ''
     buyCur = ''
     sellAmount = ''
     sellCur = ''
+    txnType = innerTxn['tx-type']
     if 'group' in txnRaw:
         shorten = str(txnRaw['group'])
         shortGroup = shorten.zfill(6)
         shorten = str(txnRaw['id'])
         shortTxn = shorten.zfill(6)
         txnName = str('I- G-' + shortGroup[:12] + '...   T-' + shortTxn[:12] + '...')
+        if txnRaw['group'] in groupDB:
+            txnDef = groupDB[txnRaw['group']]
+        else:
+            txnDef = ''
     else:
         txnName = str('I- T-' + txnRaw['id'])
+        txnDef = 'Inner Txn'
 
         
     if innerTxn['tx-type'] == 'pay':
@@ -329,17 +345,21 @@ def innerTxnRow(innerTxn, wallet, walletName, txnRaw, asaDB):
     else:
         return ''
     if innerDetails['receiver'] == wallet:
+        txnType = 'Deposit'
         buyAmount = innerDetails['amount']
         buyCur = innerTick
     elif innerTxn['sender'] == wallet:
+        txnType = 'Withdrawal'
         sellAmount = innerDetails['amount']
         sellCur = innerTick
-    if buyAmount != '': buyAmount = decimal(buyAmount, innerCur, asaDB)
-    if sellAmount != '': sellAmount = decimal(sellAmount, innerCur, asaDB)
+    if buyAmount != '':
+        buyAmount = decimal(buyAmount, innerCur, asaDB)
+    if sellAmount != '':
+        sellAmount = decimal(sellAmount, innerCur, asaDB)
     if buyAmount != '' or sellAmount != '':
-        return ['inner txn', buyAmount, buyCur,
+        return [txnType, buyAmount, buyCur,
                 sellAmount, sellCur, '', '',
-                walletName, 'Inner txn', str(txnName),
+                walletName, txnDef, str(txnName),
                 str(datetime.datetime.fromtimestamp(txnRaw['round-time']))]
             
 
@@ -356,6 +376,59 @@ def decimal(baseQ, asaID, asaDB):
         qString = str(baseQ)
         qStringFilled = qString.zfill(decimal)
         return qStringFilled[:-decimal] + '.' + qStringFilled[-decimal:]
+
+
+def multiRowProcessing(multiRow, txnRow, txnRaw, groupDB):
+    rowDef = txnRow[8]
+    multiRowTxns = multiRow['txns']
+    multiRow['groupID'] = str(txnRaw['group'])
+    multiRow['date'] = str(txnRow[10])
+    if rowDef == 'Participation Rewards':
+        multiRow['rewards'] = txnRow
+        return multiRow
+
+    #Group description
+    if multiRow['groupID'] in groupDB:
+        multiRow['groupDef'] = groupDB[multiRow['groupID']]
+    else: multiRow['groupDef'] = ''
+
+    
+    #strip and process network fees
+    if txnRow[5] != '':
+        rowFee = float(txnRow[5])
+        
+        if rowFee > 0:
+            #print('rowfee' + str(rowFee))
+            if 'Network Operation Fees' in multiRow:
+                #Load saved fees
+                netOpFees = float(multiRow['Network Operation Fees'])
+                #print('netopfee'+ str(netOpFees))
+            else:
+                #Start new fee row
+                netOpFees = float('0.000')
+                #print('new fees')
+            netOpFees = netOpFees + rowFee
+            multiRow['Network Operation Fees'] = netOpFees
+            #Clear Net Op Fees from row
+            txnRow[5] = ''
+            txnRow[6] = ''
+
+    if txnRow[1] != '' or txnRow[3] != '':
+        txnRow[8] = multiRow['groupDef']
+        multiRowTxns.append(txnRow)
+        multiRow['txns'] = multiRowTxns
+        
+    return multiRow
+
+
+
+
+
+
+
+
+
+
 
 
 
