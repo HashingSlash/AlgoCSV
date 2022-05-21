@@ -32,8 +32,7 @@ walletName = ACSVFunc.walletName(wallet)
 try:
     txnDB = ACSVFunc.loadDB('resources/txnDB.json')
     txnOrder = txnDB['txnOrder']
-    groupDB = ACSVFunc.loadDB('resources/groupDB.json')
-    asaDB = ACSVFunc.loadDB('resources/asaDB.json')
+    groupDB = ACSVFunc.loadDB('resources/groupDB.json')    
     addressDB = ACSVFunc.loadDB('resources/addressDB.json')
     appDB = ACSVFunc.loadDB('resources/appDB.json')
     prerunTxnCount = len(txnOrder)
@@ -46,11 +45,15 @@ except IOError: #Create empty list and dictionaries for storing info
     txnDB = {}
     groupDB = {}
     prerunTxnCount = 0
-    asaDB = {}
     ACSVFunc.importAlgoRolo()
     addressDB = ACSVFunc.loadDB('resources/addressDB.json')
     appDB = ACSVFunc.loadDB('resources/appDB.json')
     freshDB = 'True'
+
+try:
+    asaDB = ACSVFunc.loadDB('resources/asaDB.json')
+except IOError:
+    asaDB = {}
         
 
 #-----          RUN
@@ -135,7 +138,8 @@ for txnID in txnOrder:  #check each txn in chronological order
 
         
     #Group IDs
-    if 'group' in txnRaw: 
+    if 'group' in txnRaw:
+        #print(txnID)
         groupDef = ACSVFunc.groupIDCheck(txnRaw, wallet, addressDB, appDB) #check txn for group defining specifics
         if txnRaw['group'] not in groupDB:  #NEW Group ID
             workingGroup = txnRaw['group']  #track current group ID
@@ -174,9 +178,10 @@ ACSVFunc.saveDB(groupDB, 'resources/groupDB')
 #------------# Row Building
 
 print('Begin Row Building\n')
-
+#Create CSV file to work with
 algocsv = open('ALGO.csv', 'w', newline='', encoding='utf-8')
-writer = csv.writer(algocsv)
+writer = csv.writer(algocsv) #row writer object
+#Header row/row template
 row = ['Type', 'Buy Amount', 'Buy Cur.',
        'Sell Amount', 'Sell Cur.',
        'Fee Amount', 'Fee Cur.',
@@ -185,6 +190,7 @@ row = ['Type', 'Buy Amount', 'Buy Cur.',
        'Comment',   #Txn or Group ID, situational.
        'Date']
 writer.writerow(row)
+#vars to work with groups
 multiRow = {'rewards':[],
             'txns':[],
             'date': ''}
@@ -205,19 +211,31 @@ for txnID in txnOrder:
     if 'receiver' in txnDetails and txnDetails['receiver'] == wallet and txnRaw['receiver-rewards'] > 0:
         rewardRow = ACSVFunc.rewardsRow(txnRaw['receiver-rewards'], walletName, txnRaw, asaDB)
   
-    
+    #THIS signifies the end of a group. DO NOT REFERENCE txnRaw here. its the new txn that is not in the group
     if 'group' not in txnRaw or txnRaw['group'] != workingGroup:
         if firstRow != 'y':
             #this row not related to previous group
             #SAVE GROUP ROW HERE-------------------
             #print('save group')
+
+
+    ##-------------------------------------------------------
+          #HANDLE GROUP TYPES HERE
+            if 'groupDef' in multiRow:
+                groupDef = multiRow['groupDef']
+                if 'Tinyman' in groupDef:
+                    #Tinyman Group Handling
+                    pass #for now...
+            
+    ##--------------------------------------------------------
+            #write group txns to csv
             groupRows = multiRow['txns']
             for gRow in groupRows:
                 writer.writerow(gRow)
-                
+            #write rewards from group if any to csv    
             if multiRow['rewards'] != []:
                 writer.writerow(multiRow['rewards'])
-
+            #write combined Net Op Fees to csv
             if 'Network Operation Fees' in multiRow:
                 netOpFeesRow = ['Other Expense', '', '', '', '',
                 multiRow['Network Operation Fees'], 'ALGO', walletName,
@@ -231,34 +249,40 @@ for txnID in txnOrder:
         else: #prevents first row triggering group saving
             firstRow = 'n'
 
-    
+    #txn is part of a group
     if 'group' in txnRaw:
-        #print('\n')
-        #print('starting new group: ' + txnRaw['group'] + ': ' + str(groupDB[txnRaw['group']]))
         workingGroup = txnRaw['group']
+        #pass to function to parse txns types and rewards
         multiRow = ACSVFunc.multiRowProcessing(multiRow, row, txnRaw, groupDB)
         multiRow['groupID'] = txnRaw['group']
+        #include any inner txns
         if 'inner-txns' in txnRaw:
             innerTxnList = txnRaw['inner-txns']
             for innerTxn in innerTxnList:
+                #pass inner txn to row builder
                 innerRow = ACSVFunc.innerTxnRow(innerTxn, wallet, walletName, txnRaw, asaDB, groupDB)
                 if isinstance(innerRow, list):
+                    #pass inner txn row to group parser
                     multiRow = ACSVFunc.multiRowProcessing(multiRow, innerRow, txnRaw, groupDB)
             
        
     else:
         #Single Row
         #print('\n')
-        
+
+        #write single rows as is to csv.
         writer.writerow(row)
         
         if 'inner-txns' in txnRaw:
             innerTxnList = txnRaw['inner-txns']
             for innerTxn in innerTxnList:
+                #pass any inner txns to row builder
                 innerRow = ACSVFunc.innerTxnRow(innerTxn, wallet, walletName, txnRaw, asaDB, groupDB)
                 if isinstance(innerRow, list):
+                    #write any inner txns rows to csv
                     writer.writerow(innerRow)
         if rewardRow != []:
+            #write rewards row to csv
             writer.writerow(rewardRow)        
 
     

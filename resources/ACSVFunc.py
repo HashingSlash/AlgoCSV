@@ -31,6 +31,7 @@ def importAlgoRolo():
         try:
             addressDB = loadDB('resources/AlgoAddressDB.json')
             appDB = loadDB('resources/AlgoAppDB.json')
+            asaDB = ACSVFunc.loadDB('resources/AlgoAsaDB.json')
             print('Loaded App and Address DBs from resources')
         except:
             print('Downloading addressDB and appDB from github (AlgoRolo)')
@@ -38,12 +39,16 @@ def importAlgoRolo():
             addressDB = r.json()
             r = requests.get('https://raw.githubusercontent.com/HashingSlash/AlgoRolo/main/AlgoAppDB.json')
             appDB = r.json()
+            r = requests.get('https://raw.githubusercontent.com/HashingSlash/AlgoRolo/main/AlgoAsaDB.json')
+            asaDB = r.json()
             saveDB(addressDB, 'resources/addressDB')
             saveDB(appDB, 'resources/appDB')
+            saveDB(asaDB, 'resources/asaDB')
             print('Success')
         pass
 
 #------------# wallet ID shortener
+    #Return a short wallet 'name'. example - ABCD...WXYZ
 def walletName(wallet):
     walletNameCut = wallet.zfill(4)
     walletName = walletNameCut[:4] + '...' + walletNameCut[-4:]
@@ -66,13 +71,13 @@ def txnTypeDetails(txnRaw):
     if txnRaw['tx-type'] == 'pay':
         return txnRaw['payment-transaction']
     if txnRaw['tx-type'] == 'keyreg':
-        pass
+        return txnRaw['keyreg-transaction']
     if txnRaw['tx-type'] == 'acfg':
-        pass
+        return txnRaw['asset-config-transaction']
     if txnRaw['tx-type'] == 'axfer':
         return txnRaw['asset-transfer-transaction']
     if txnRaw['tx-type'] == 'afrz':
-        pass
+        return txnRaw['asset-freeze-transaction']
     if txnRaw['tx-type'] == 'appl':
         return txnRaw['application-transaction']
 
@@ -161,18 +166,18 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB):
             if appArg != []:
                 if 'Tinyman' in result:
                     if appArg[0] == 'Ym9vdHN0cmFw':
-                        if len(result) == 2: result.append('Bootstrap Pool')
+                        result = ['Tinyman', 'Bootstrap Pool']
                     elif appArg[0] == 'c3dhcA==':
                         if appArg[1] == 'Zmk=':
-                            if len(result) == 2: result.append('Trade: Sell')
+                            result = ['Tinyman' , 'Trade: Fixed Input (Sell)']
                         elif appArg[1] ==  'Zm8=':
-                            if len(result) == 2: result.append('Trade: Buy')
+                            result = ['Tinyman', 'Trade: Fixed Output (Buy)']
                     elif appArg[0] == 'bWludA==':
-                        if len(result) == 2: result.append('LP Mint')
+                        result = ['Tinyman', 'LP Mint']
                     elif appArg[0] == 'YnVybg==':
-                        if len(result) == 2: result.append('LP Burn')
+                        result = ['Tinyman', 'LP Burn']
                     elif appArg[0] == 'cmVkZWVt':
-                        if len(result) == 2: result.append('Redeem slippage')
+                        result = ['Tinyman', 'Redeem slippage']
                 #if 'Yieldly' in result:
                 #    if appArg[0] == 'RA==':
                 #        if len(result) == 2: result.append('Stake: ALGO - NLL')
@@ -206,7 +211,10 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB):
 ##--------##        Row building
 def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB):
     txnDetails = txnTypeDetails(txnRaw)
-    ###SINGLE TXN ROW
+    #take a txn and put it into a list for the CSV writer
+    #divided up into columns. could be streamlined.
+
+    #Set base vars
     
     #Type
     txnType = txnRaw['tx-type']
@@ -271,6 +279,9 @@ def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB):
     #Date
     date = str(datetime.datetime.fromtimestamp(txnRaw['round-time']))
 
+    #Work with base vars
+
+    #Set correct tickers and decimal place when possible
     if buyAmount != '':
         buyAmount = decimal(buyAmount, buyCur, asaDB)
     if buyCur in asaDB:
@@ -281,22 +292,28 @@ def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB):
     if sellCur in asaDB:
         asaDetails = asaDB[sellCur]
         sellCur = asaDetails['ticker']
-
+        
+    #Network Op Fees
     if buyAmount == '' and sellAmount == '':
         txnType = 'Other Expense'
         tradeGroup = 'Network Operation Fees'
 
+    #DROP DEFS GO HERE FOR NOW. EXPAND LATER
     if txnType == 'Deposit' and ('AlgoStake' in tradeGroup or 'The Algo Faucet' in tradeGroup):
         txnType = 'Staking'
         tradeGroup = tradeGroup[0]
-    
+
+    #assemble row    
     row = [txnType, buyAmount, buyCur, sellAmount, sellCur,
            feeAmount, feeCur, walletName, tradeGroup, comment, date]
-
+    
+    #aHR0cHM6Ly9vcGVuLnNwb3RpZnkuY29tL3RyYWNrLzQzQzB6Wm1QVU5NN3VMeW5Gdm4xanc/c2k9MDAyMTZjNDkwZTZmNDIyOA==
+    #note hint: tennis
     return row
     
 def rewardsRow(rewards, walletName, txnRaw, asaDB):
     amount = decimal(rewards, 'ALGO', asaDB)
+    #set txn 'nick-name' for user to locate exactly were a participation reward is within a txn group
     if 'group' in txnRaw:
         shorten = str(txnRaw['group'])
         shortGroup = shorten.zfill(6)
@@ -305,17 +322,21 @@ def rewardsRow(rewards, walletName, txnRaw, asaDB):
         txnName = str('R- G-' + shortGroup[:12] + '...   T- ' + shortTxn[:12] + '...')
     else:
         txnName = str('R- T-' + txnRaw['id'])
+        
     return ['Staking', amount, 'ALGO',
             '', '', '', '',
             walletName, 'Participation Rewards', txnName,
             str(datetime.datetime.fromtimestamp(txnRaw['round-time']))]
 
 def innerTxnRow(innerTxn, wallet, walletName, txnRaw, asaDB, groupDB):
+    #Set blank row vars
     buyAmount = ''
     buyCur = ''
     sellAmount = ''
     sellCur = ''
     txnType = innerTxn['tx-type']
+
+    #Txn 'nickname' for users reference
     if 'group' in txnRaw:
         shorten = str(txnRaw['group'])
         shortGroup = shorten.zfill(6)
@@ -330,7 +351,7 @@ def innerTxnRow(innerTxn, wallet, walletName, txnRaw, asaDB, groupDB):
         txnName = str('I- T-' + txnRaw['id'])
         txnDef = 'Inner Txn'
 
-        
+    #Set base vars of inner txn    
     if innerTxn['tx-type'] == 'pay':
         innerDetails = innerTxn['payment-transaction']
         innerCur = 'ALGO'
@@ -344,6 +365,7 @@ def innerTxnRow(innerTxn, wallet, walletName, txnRaw, asaDB, groupDB):
         else: innerTick = innerCur
     else:
         return ''
+    #use base vars to set row vars
     if innerDetails['receiver'] == wallet:
         txnType = 'Deposit'
         buyAmount = innerDetails['amount']
@@ -356,13 +378,15 @@ def innerTxnRow(innerTxn, wallet, walletName, txnRaw, asaDB, groupDB):
         buyAmount = decimal(buyAmount, innerCur, asaDB)
     if sellAmount != '':
         sellAmount = decimal(sellAmount, innerCur, asaDB)
+
+    #assemble row and return it back
     if buyAmount != '' or sellAmount != '':
         return [txnType, buyAmount, buyCur,
                 sellAmount, sellCur, '', '',
                 walletName, txnDef, str(txnName),
                 str(datetime.datetime.fromtimestamp(txnRaw['round-time']))]
             
-
+#func to return number correctly 
 def decimal(baseQ, asaID, asaDB):
     if asaID != 'ALGO':
         asaDetails = asaDB[str(asaID)]
@@ -383,6 +407,7 @@ def multiRowProcessing(multiRow, txnRow, txnRaw, groupDB):
     multiRowTxns = multiRow['txns']
     multiRow['groupID'] = str(txnRaw['group'])
     multiRow['date'] = str(txnRow[10])
+    #if a rewards row, store in multiRow and return. no further action required.
     if rowDef == 'Participation Rewards':
         multiRow['rewards'] = txnRow
         return multiRow
@@ -398,15 +423,12 @@ def multiRowProcessing(multiRow, txnRow, txnRaw, groupDB):
         rowFee = float(txnRow[5])
         
         if rowFee > 0:
-            #print('rowfee' + str(rowFee))
             if 'Network Operation Fees' in multiRow:
                 #Load saved fees
                 netOpFees = float(multiRow['Network Operation Fees'])
-                #print('netopfee'+ str(netOpFees))
             else:
                 #Start new fee row
                 netOpFees = float('0.000')
-                #print('new fees')
             netOpFees = netOpFees + rowFee
             multiRow['Network Operation Fees'] = netOpFees
             #Clear Net Op Fees from row
