@@ -402,6 +402,9 @@ def decimal(baseQ, asaID, asaDB):
         return qStringFilled[:-decimal] + '.' + qStringFilled[-decimal:]
 
 
+#--------------------------------------------------#
+    #MULTIROW FUNCS
+
 def multiRowProcessing(multiRow, txnRow, txnRaw, groupDB):
     rowDef = txnRow[8]
     multiRowTxns = multiRow['txns']
@@ -441,6 +444,69 @@ def multiRowProcessing(multiRow, txnRow, txnRaw, groupDB):
         multiRow['txns'] = multiRowTxns
         
     return multiRow
+
+
+
+def RemoveFeeRow(multiRow, rowNumber):
+    netOpFees = float(multiRow['Network Operation Fees'])
+    txnRows = multiRow['txns']
+    feeRow = txnRows[rowNumber]
+    multiRow['Network Operation Fees'] = netOpFees + float(feeRow[3])
+    txnRows.remove(feeRow)
+    multiRow['txns'] = txnRows
+    return multiRow
+
+def swapRow(multiRow, sentRow, receivedRow, swapType, fee, platform):
+    swapRow = sentRow
+    swapRow[0] = 'Trade'
+    swapRow[1] = receivedRow[1]
+    swapRow[2] = receivedRow[2]
+    if fee != 0.0:
+        if swapType == 'Fixed Input':
+            i = 100.00 - float(fee)
+            feeAsset = float(swapRow[1])
+            platformFee = float(((feeAsset * 100)/i) - feeAsset)
+            swapRow[5] = platformFee
+            swapRow[6] = swapRow[2]
+            swapRow[8] = str(platform + ': Trade')
+        if swapType == 'Fixed Output':
+            i = float(1 - (fee / 100))
+            feeAsset = float(swapRow[3])
+            platformFee = float(feeAsset - (feeAsset * i))
+            swapRow[5] = platformFee
+            swapRow[6] = swapRow[4]
+            swapRow[8] = str(platform + ': Trade')
+    multiRow['groupRows'] = [swapRow]
+    return multiRow
+
+def lpAdjust(multiRow, action, platform):
+    txns = multiRow['txns']
+    lpRow1 = txns[0]
+    lpRow1[0] = 'Trade'
+    lpRow1[8] = str(platform + ': LP ' + action)
+    lpRow2 = txns[1]
+    lpRow2[0] = 'Trade'
+    lpRow2[8] = str(platform + ': LP ' + action)
+    tokenRow = txns[2]
+    if action == 'Mint':
+        lpRow1[1] = (float(tokenRow[1]))/2
+        lpRow1[2] = tokenRow[2]
+        lpRow2[1] = (float(tokenRow[1]))/2
+        lpRow2[2] = tokenRow[2]
+    elif action == 'Burn':
+        lpRow1[3] = (float(tokenRow[3]))/2
+        lpRow1[4] = tokenRow[4]
+        lpRow2[3] = (float(tokenRow[3]))/2
+        lpRow2[4] = tokenRow[4]
+    multiRow['groupRows'] = [lpRow1, lpRow2]
+    return multiRow
+
+def tmPoolRedeem(multiRow, txn):
+    txn[8] = 'Tinyman: Redeem Slippage'
+    multiRow['groupRows'] = [txn]
+    return multiRow
+
+
 
 
 

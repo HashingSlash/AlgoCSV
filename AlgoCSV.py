@@ -223,15 +223,32 @@ for txnID in txnOrder:
           #HANDLE GROUP TYPES HERE
             if 'groupDef' in multiRow:
                 groupDef = multiRow['groupDef']
+
+                #Tinyman Group Handling
                 if 'Tinyman' in groupDef:
-                    #Tinyman Group Handling
-                    pass #for now...
+                    multiRow = ACSVFunc.RemoveFeeRow(multiRow, 0)
+                    txns = multiRow['txns']
+                    if 'Fixed Input' in groupDef[1] and len(txns) == 2: #Needs only 2 txns.
+                        multiRow = ACSVFunc.swapRow(multiRow, txns[0], txns[1], 'Fixed Input', 0.3, 'Tinyman')
+                    elif 'Fixed Output' in groupDef[1]and len(txns) == 2:
+                        multiRow = ACSVFunc.swapRow(multiRow, txns[0], txns[1], 'Fixed Output', 0.3, 'Tinyman')
+                    elif 'LP Mint' in groupDef[1]:
+                        multiRow = ACSVFunc.lpAdjust(multiRow, 'Mint', 'Tinyman')
+                    elif 'LP Burn' in groupDef[1]:
+                        multiRow = ACSVFunc.lpAdjust(multiRow, 'Burn', 'Tinyman')
+                    elif 'Redeem slippage' in groupDef[1]:
+                        multiRow = ACSVFunc.tmPoolRedeem(multiRow, txns[0])
+
+                
             
     ##--------------------------------------------------------
             #write group txns to csv
-            groupRows = multiRow['txns']
+            if 'groupRows' in multiRow:
+                groupRows = multiRow['groupRows']
+            else: groupRows = multiRow['txns']   
             for gRow in groupRows:
                 writer.writerow(gRow)
+            
             #write rewards from group if any to csv    
             if multiRow['rewards'] != []:
                 writer.writerow(multiRow['rewards'])
