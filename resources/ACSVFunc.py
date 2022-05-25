@@ -169,9 +169,9 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB):
                         result = ['Tinyman', 'Bootstrap Pool']
                     elif appArg[0] == 'c3dhcA==':
                         if appArg[1] == 'Zmk=':
-                            result = ['Tinyman' , 'Trade: Fixed Input (Sell)']
+                            result = ['Tinyman' , 'Trade: Fixed Input']
                         elif appArg[1] ==  'Zm8=':
-                            result = ['Tinyman', 'Trade: Fixed Output (Buy)']
+                            result = ['Tinyman', 'Trade: Fixed Output']
                     elif appArg[0] == 'bWludA==':
                         result = ['Tinyman', 'LP Mint']
                     elif appArg[0] == 'YnVybg==':
@@ -196,9 +196,10 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB):
                 #    elif appArg[0] == 'YmFpbA==':
                 #        if len(result) == 2: result.append('Withdraw: t5')
                     
-                if appArg[0] == 'U1dBUA==': result = ['Pact', 'Swap']
+                if appArg[0] == 'U1dBUA==':
+                    result = ['Pact', 'Trade']
                 elif appArg[0] == 'QURETElR': result = ['Pact', 'LP Mint']
-                elif appArg[0] == 'UkVNTElR': result = ['Pact', 'LP Unmint']
+                elif appArg[0] == 'UkVNTElR': result = ['Pact', 'LP Burn']
                 elif appArg[0] == 'ZXhlY3V0ZQ==': result = ['Algodex']
                 elif appArg[0] == 'ZXhlY3V0ZV93aXRoX2Nsb3Nlb3V0': result = ['Algodex']
 
@@ -298,17 +299,20 @@ def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB):
         txnType = 'Other Expense'
         tradeGroup = 'Network Operation Fees'
 
-    #DROP DEFS GO HERE FOR NOW. EXPAND LATER
+    #-------------------DROP DEFS GO HERE FOR NOW. EXPAND LATER--------------------
     if txnType == 'Deposit' and ('AlgoStake' in tradeGroup or 'The Algo Faucet' in tradeGroup):
         txnType = 'Staking'
         tradeGroup = tradeGroup[0]
+    if 'Pact' and 'Rewards' in tradeGroup:
+        txnType = 'Staking'
+        tradeGroup = 'Pact: Rewards'
+        
 
     #assemble row    
     row = [txnType, buyAmount, buyCur, sellAmount, sellCur,
            feeAmount, feeCur, walletName, tradeGroup, comment, date]
     
     #aHR0cHM6Ly9vcGVuLnNwb3RpZnkuY29tL3RyYWNrLzQzQzB6Wm1QVU5NN3VMeW5Gdm4xanc/c2k9MDAyMTZjNDkwZTZmNDIyOA==
-    #note hint: tennis
     return row
     
 def rewardsRow(rewards, walletName, txnRaw, asaDB):
@@ -439,7 +443,7 @@ def multiRowProcessing(multiRow, txnRow, txnRaw, groupDB):
             txnRow[6] = ''
 
     if txnRow[1] != '' or txnRow[3] != '':
-        txnRow[8] = multiRow['groupDef']
+        if txnRow[8] != 'Pact: Rewards': txnRow[8] = multiRow['groupDef']
         multiRowTxns.append(txnRow)
         multiRow['txns'] = multiRowTxns
         
@@ -457,37 +461,59 @@ def RemoveFeeRow(multiRow, rowNumber):
     return multiRow
 
 def swapRow(multiRow, sentRow, receivedRow, swapType, fee, platform):
+    #use outgoing txn to build swap row on
     swapRow = sentRow
-    swapRow[0] = 'Trade'
-    swapRow[1] = receivedRow[1]
-    swapRow[2] = receivedRow[2]
+    swapRow[0] = 'Trade' #txn type
+    swapRow[1] = receivedRow[1] #insert received assets
+    swapRow[2] = receivedRow[2] #quantity and ID
+    swapRow[8] = str(platform + ': Trade')
     if fee != 0.0:
+        ##places trade fees in fee column
         if swapType == 'Fixed Input':
             i = 100.00 - float(fee)
             feeAsset = float(swapRow[1])
             platformFee = float(((feeAsset * 100)/i) - feeAsset)
             swapRow[5] = platformFee
             swapRow[6] = swapRow[2]
-            swapRow[8] = str(platform + ': Trade')
         if swapType == 'Fixed Output':
             i = float(1 - (fee / 100))
             feeAsset = float(swapRow[3])
             platformFee = float(feeAsset - (feeAsset * i))
             swapRow[5] = platformFee
             swapRow[6] = swapRow[4]
-            swapRow[8] = str(platform + ': Trade')
     multiRow['groupRows'] = [swapRow]
     return multiRow
 
 def lpAdjust(multiRow, action, platform):
     txns = multiRow['txns']
-    lpRow1 = txns[0]
+    #currently for burns and mints
+    #will combine two assets and one LP token txn into two rows
+    #shows as a Trade. Half the LP tokens for one asset, half for the other.
+    slippageRow = ''
+    #row checking
+    if platform == 'Tinyman':
+        lpRow1 = txns[0]
+        lpRow2 = txns[1]
+        tokenRow = txns[2]
+    if platform == 'Pact':
+        if action == 'Mint':
+            lpRow1 = txns[0]
+            lpRow2 = txns[1]
+            tokenRow = txns[2]
+            if len(txns) > 3: slippageRow = txns[3]
+        if action == 'Burn':
+            tokenRow = txns[0]
+            lpRow1 = txns[1]
+            if tokenRow[1] == '.000000' and lpRow1[1] == '.000000':
+                return multiRow #solves for burn txns with no assets transfering
+            lpRow2 = txns[2]
+
+
+    
     lpRow1[0] = 'Trade'
     lpRow1[8] = str(platform + ': LP ' + action)
-    lpRow2 = txns[1]
     lpRow2[0] = 'Trade'
     lpRow2[8] = str(platform + ': LP ' + action)
-    tokenRow = txns[2]
     if action == 'Mint':
         lpRow1[1] = (float(tokenRow[1]))/2
         lpRow1[2] = tokenRow[2]
@@ -498,10 +524,14 @@ def lpAdjust(multiRow, action, platform):
         lpRow1[4] = tokenRow[4]
         lpRow2[3] = (float(tokenRow[3]))/2
         lpRow2[4] = tokenRow[4]
-    multiRow['groupRows'] = [lpRow1, lpRow2]
+
+    if slippageRow == '':
+        multiRow['groupRows'] = [lpRow1, lpRow2, slippageRow]
+    else: multiRow['groupRows'] = [lpRow1, lpRow2]
     return multiRow
 
 def tmPoolRedeem(multiRow, txn):
+    #could have been in the main script really, seperated for a e s t h e t i c s
     txn[8] = 'Tinyman: Redeem Slippage'
     multiRow['groupRows'] = [txn]
     return multiRow

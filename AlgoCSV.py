@@ -190,7 +190,8 @@ row = ['Type', 'Buy Amount', 'Buy Cur.',
        'Comment',   #Txn or Group ID, situational.
        'Date']
 writer.writerow(row)
-#vars to work with groups
+#pack group information into multiRow dict.
+
 multiRow = {'rewards':[],
             'txns':[],
             'date': ''}
@@ -224,6 +225,7 @@ for txnID in txnOrder:
             if 'groupDef' in multiRow:
                 groupDef = multiRow['groupDef']
 
+                
                 #Tinyman Group Handling
                 if 'Tinyman' in groupDef:
                     multiRow = ACSVFunc.RemoveFeeRow(multiRow, 0)
@@ -238,9 +240,22 @@ for txnID in txnOrder:
                         multiRow = ACSVFunc.lpAdjust(multiRow, 'Burn', 'Tinyman')
                     elif 'Redeem slippage' in groupDef[1]:
                         multiRow = ACSVFunc.tmPoolRedeem(multiRow, txns[0])
-
+                #Pact, currently unsure how to tell fixed end and fee rate
+                if 'Pact' in groupDef:
+                    txns = multiRow['txns']
+                    #print(txns)
+                    if 'Trade' in groupDef and len(txns) == 2: #Needs only 2 txns.
+                        multiRow = ACSVFunc.swapRow(multiRow, txns[0], txns[1], 'Fixed Input', 0.0, 'Pact')#0 fees until i can tell which is which
+                    elif 'LP Mint' in groupDef[1]:
+                        multiRow = ACSVFunc.lpAdjust(multiRow, 'Mint', 'Pact')
+                    elif 'LP Burn' in groupDef[1]:
+                        multiRow = ACSVFunc.lpAdjust(multiRow, 'Burn', 'Pact')
                 
-            
+                
+
+
+                #----Staking/deposits and pseudo-accounts---#
+
     ##--------------------------------------------------------
             #write group txns to csv
             if 'groupRows' in multiRow:
@@ -256,7 +271,7 @@ for txnID in txnOrder:
             if 'Network Operation Fees' in multiRow:
                 netOpFeesRow = ['Other Expense', '', '', '', '',
                 multiRow['Network Operation Fees'], 'ALGO', walletName,
-                'Network Operation Fees', str('F-' + multiRow['groupID']), multiRow['date']]
+                'Summed Group Network Fees', str('F-' + multiRow['groupID']), multiRow['date']]
                 writer.writerow(netOpFeesRow)
             
             #MAKE BLANK GROUP ROW
