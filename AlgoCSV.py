@@ -224,7 +224,7 @@ for txnID in txnOrder:
           #HANDLE GROUP TYPES HERE
             if 'groupDef' in multiRow:
                 groupDef = multiRow['groupDef']
-
+                #print(multiRow)
                 
                 #Tinyman Group Handling
                 if 'Tinyman' in groupDef:
@@ -239,9 +239,10 @@ for txnID in txnOrder:
                     elif 'LP Burn' in groupDef[1]:
                         multiRow = ACSVFunc.lpAdjust(multiRow, 'Burn', 'Tinyman')
                     elif 'Redeem slippage' in groupDef[1]:
+                        
                         multiRow = ACSVFunc.slippage(multiRow, txns[0], 'Tinyman', 'Pooled')
                 #Pact, currently unsure how to tell fixed end and fee rate
-                if 'Pact' in groupDef:
+                elif 'Pact' in groupDef:
                     txns = multiRow['txns']
                     if 'Trade' in groupDef and len(txns) == 2: #Needs only 2 txns.
                         multiRow = ACSVFunc.swapRow(multiRow, txns[0], txns[1], 'Fixed Input', 0.0, 'Pact')#0 fees until i can tell which is which
@@ -250,10 +251,12 @@ for txnID in txnOrder:
                     elif 'LP Burn' in groupDef[1]:
                         multiRow = ACSVFunc.lpAdjust(multiRow, 'Burn', 'Pact')
                 #AlgoFi. unsure of swap fees currently
-                if 'AlgoFi' in groupDef:
+                elif 'AlgoFi' in groupDef:
                     txns = multiRow['txns']
-                    if 'Fixed Input' in groupDef and len(txns) < 2:
-                        multiRow = ACSVFunc.swapRow(multiRow, txns[0], txns[1], 'Fixed Input', 0.0, 'AlgoFi')
+                    if 'Fixed Input' in groupDef:
+                        if len(txns) == 2:
+                            multiRow = ACSVFunc.swapRow(multiRow, txns[0], txns[1], 'Fixed Input', 0.0, 'AlgoFi')
+                        else: print(len(txns))
                     if 'Fixed Output' in groupDef:
                         multiRow = ACSVFunc.swapRow(multiRow, txns[0], txns[1], 'Fixed Output', 0.0, 'AlgoFi')
                         multiRow = ACSVFunc.slippage(multiRow, txns[2], 'AlgoFi', 'Trade')
@@ -269,6 +272,8 @@ for txnID in txnOrder:
                         #for txn in txns:
                         #    print(txn)
                         #if len(txns) > 2: print(txns)
+                elif 'AlgoDex' in groupDef:
+                    print(multiRow)
 
 
                 #----Staking/deposits and pseudo-accounts---#
@@ -313,6 +318,11 @@ for txnID in txnOrder:
                 if isinstance(innerRow, list):
                     #pass inner txn row to group parser
                     multiRow = ACSVFunc.multiRowProcessing(multiRow, innerRow, txnRaw, groupDB)
+        #if txnRaw['tx-type'] == 'axfer':
+        #    if txnDetails['receiver'] == wallet:
+        #        #receive close
+        #    elif txnRaw['sender'] == wallet:
+                #send close
             
        
     else:

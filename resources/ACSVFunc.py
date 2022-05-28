@@ -122,6 +122,36 @@ def partnerIDCheck(txnRaw, addressDB, appDB):
     return result
 
 #------------# Group Checking
+def algodexGroup(decodedNote, wallet):
+    tradeDetails = decodedNote[2::]
+    tradeDetails = tradeDetails[:-1:]
+    result = []
+    try:
+        tradeDetails = json.loads(tradeDetails)
+        result = ['AlgoDex']
+        for entry in tradeDetails:
+            if '[open]' in entry:
+                result = ['AlgoDex', 'Place Order']
+            elif '[close]' in entry:
+                result = ['AlgoDex', 'Cancel Order']
+            elif '[execute' in entry:
+                if wallet in entry:
+                    result = ['AlgoDex', 'Take Order']
+                else:
+            
+                    tradeDetails = tradeDetails[entry]
+                    if tradeDetails['orderCreatorAddr'] == wallet:
+                        result = ['AlgoDex', 'Order Sold']
+                    #else: print(tradeDetails)
+            #else: print(entry)
+    except:
+        pass
+
+    print(result)
+    return result
+
+
+
 #def groupIDCheck(txnRaw, groupDB, wallet):
 def groupIDCheck(txnRaw, wallet, addressDB, appDB, groupDB):
     result = ''
@@ -136,13 +166,30 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB, groupDB):
         decodedNote = str(base64.b64decode(txnRaw['note']))
         if txnRaw['note'] == "YWIyLmdhbGxlcnk=": result = ['ab2.gallery']
         elif txnRaw['note'] == "TWFuYWdlcjogQ2xhaW0gcmV3YXJkcw==": result = ['AlgoFi', 'Claim Rewards']
-        elif wallet in decodedNote:
-            #print(txnRaw['id'])
-            #print(decodedNote)
-            result = ['Algodex']
+
         elif 'RIO Rewards' in decodedNote: result = ['RIO', 'Rewards']
         #else: print(decodedNote)
-                   
+
+        #------------------ Check for AlgoDex ------------
+        if wallet in decodedNote:
+            print(txnRaw['id'])
+            result = algodexGroup(decodedNote, wallet)
+            if 'application-args' in txnDetails:
+                appArg = txnDetails['application-args']
+                #if appArg != []:
+                #    
+                #    #print(txnRaw['id'])
+                #    if appArg[0] == 'ZXhlY3V0ZQ==':     #execute
+                #        result = algodexGroup(decodedNote, wallet)
+                #    elif appArg[0] == 'ZXhlY3V0ZV93aXRoX2Nsb3Nlb3V0':   #execute with closeout
+                #        result = algodexGroup(decodedNote, wallet)
+                #    elif appArg[0] == 'b3Blbg==':   #open
+                #        result = algodexGroup(decodedNote, wallet)
+                #    elif appArg[0] == 'Y2xvc2U=':   #close
+                #        result = algodexGroup(decodedNote, wallet)
+                #    else:
+                #        pass    #print(decodedNote)
+        #----------------------------------------------
         
     if txnRaw['tx-type'] == 'appl':
         #else: print(str(txnDetails['application-id']))
@@ -183,7 +230,7 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB, groupDB):
                         result = ['Tinyman', 'LP Burn']
                     elif appArg[0] == 'cmVkZWVt':
                         result = ['Tinyman', 'Redeem slippage']
-                
+
                 #------------------------------------
                 #if 'Yieldly' in result:
                 #    if appArg[0] == 'RA==':
@@ -208,23 +255,7 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB, groupDB):
                     elif appArg[0] == 'QURETElR': result = ['Pact', 'LP Mint']
                     elif appArg[0] == 'UkVNTElR': result = ['Pact', 'LP Burn']
                     #-------------------------------------------
-                    elif appArg[0] == 'ZXhlY3V0ZQ==':
-                        #print('\n')
-                        #print(txnRaw['id'])
-                        #print(decodedNote)
-                        
 
-                        #tradeDetails = decodedNote[2::]
-                        #tradeDetails = tradeDetails[:-1:]
-                        #tradeDetails = json.loads(tradeDetails)
-                        #print(tradeDetails)
-                        result = ['Algodex']
-                    elif appArg[0] == 'ZXhlY3V0ZV93aXRoX2Nsb3Nlb3V0':
-                        #print(txnRaw['id'])
-                        #print(decodedNote)
-                        
-                        #print('\n')
-                        result = ['Algodex']
                 #-------------------------------------------
                 #AlgoFi
                     elif appArg[0] == 'c2Vm': result = ['AlgoFi', 'Fixed Input']
@@ -237,6 +268,9 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB, groupDB):
                     elif appArg[0] == 'YmEybw==': result = ['AlgoFi', 'LP Burn']
 
     return result
+
+
+
 ##--------##        Row building
 def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB):
     txnDetails = txnTypeDetails(txnRaw)
@@ -252,11 +286,14 @@ def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB):
     if 'amount' in txnDetails and txnDetails['amount'] > 0 and txnDetails['receiver'] == wallet:
         txnType = 'Deposit'
         buyAmount = txnDetails['amount']
+    elif 'close-amount' in txnDetails and txnDetails['close-amount'] > 0 and txnDetails['receiver'] == wallet:
+        txnType = 'Deposit'
+        buyAmount = txnDetails['close-amount']
     else:
         buyAmount = ''
         
     #Buy/In Cur.
-    if 'receiver' in txnDetails and txnDetails['amount'] > 0 and txnDetails['receiver'] == wallet:
+    if 'receiver' in txnDetails and txnDetails['receiver'] == wallet:
         if txnRaw['tx-type'] == 'pay':
             buyCur = 'ALGO'
         elif txnRaw['tx-type'] == 'axfer' and 'asset-id' in txnDetails:
