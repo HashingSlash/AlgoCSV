@@ -123,7 +123,7 @@ def partnerIDCheck(txnRaw, addressDB, appDB):
 
 #------------# Group Checking
 #def groupIDCheck(txnRaw, groupDB, wallet):
-def groupIDCheck(txnRaw, wallet, addressDB, appDB):
+def groupIDCheck(txnRaw, wallet, addressDB, appDB, groupDB):
     result = ''
 
     if txnRaw['sender'] in addressDB: result = addressDB[txnRaw['sender']]
@@ -136,7 +136,10 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB):
         decodedNote = str(base64.b64decode(txnRaw['note']))
         if txnRaw['note'] == "YWIyLmdhbGxlcnk=": result = ['ab2.gallery']
         elif txnRaw['note'] == "TWFuYWdlcjogQ2xhaW0gcmV3YXJkcw==": result = ['AlgoFi', 'Claim Rewards']
-        elif wallet in decodedNote: result = ['Algodex']
+        elif wallet in decodedNote:
+            #print(txnRaw['id'])
+            #print(decodedNote)
+            result = ['Algodex']
         elif 'RIO Rewards' in decodedNote: result = ['RIO', 'Rewards']
         #else: print(decodedNote)
                    
@@ -154,8 +157,9 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB):
             
         if 'foreign-apps' in txnDetails and len(txnDetails['foreign-apps']) > 0:
             foreignApps = txnDetails['foreign-apps']
-            if str(foreignApps[0]) in appDB:
-                result = appDB[str(foreignApps[0])]
+            for app in foreignApps:
+                if app in appDB:
+                    result = appDB[app]
 
         if str(txnDetails['application-id']) in appDB:
             result = appDB[str(txnDetails['application-id'])]
@@ -164,6 +168,7 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB):
             
             appArg = txnDetails['application-args']
             if appArg != []:
+                #------------------------------------
                 if 'Tinyman' in result:
                     if appArg[0] == 'Ym9vdHN0cmFw':
                         result = ['Tinyman', 'Bootstrap Pool']
@@ -178,6 +183,8 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB):
                         result = ['Tinyman', 'LP Burn']
                     elif appArg[0] == 'cmVkZWVt':
                         result = ['Tinyman', 'Redeem slippage']
+                
+                #------------------------------------
                 #if 'Yieldly' in result:
                 #    if appArg[0] == 'RA==':
                 #        if len(result) == 2: result.append('Stake: ALGO - NLL')
@@ -195,18 +202,39 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB):
                 #        if len(result) == 2: result.append('Claim: t5')
                 #    elif appArg[0] == 'YmFpbA==':
                 #        if len(result) == 2: result.append('Withdraw: t5')
-                    
-                if appArg[0] == 'U1dBUA==':
-                    result = ['Pact', 'Trade']
-                elif appArg[0] == 'QURETElR': result = ['Pact', 'LP Mint']
-                elif appArg[0] == 'UkVNTElR': result = ['Pact', 'LP Burn']
-                elif appArg[0] == 'ZXhlY3V0ZQ==': result = ['Algodex']
-                elif appArg[0] == 'ZXhlY3V0ZV93aXRoX2Nsb3Nlb3V0': result = ['Algodex']
+                #-----------------------------------------
+                else:
+                    if appArg[0] == 'U1dBUA==': result = ['Pact', 'Trade']
+                    elif appArg[0] == 'QURETElR': result = ['Pact', 'LP Mint']
+                    elif appArg[0] == 'UkVNTElR': result = ['Pact', 'LP Burn']
+                    #-------------------------------------------
+                    elif appArg[0] == 'ZXhlY3V0ZQ==':
+                        #print('\n')
+                        #print(txnRaw['id'])
+                        #print(decodedNote)
+                        
 
-
-
-                elif appArg[0] == 'YmEybw==': result = ['AlgoFi', 'LP Burn']
-                elif appArg[0] == 'cnBhMXI=': result = ['AlgoFi', 'LP Mint']
+                        #tradeDetails = decodedNote[2::]
+                        #tradeDetails = tradeDetails[:-1:]
+                        #tradeDetails = json.loads(tradeDetails)
+                        #print(tradeDetails)
+                        result = ['Algodex']
+                    elif appArg[0] == 'ZXhlY3V0ZV93aXRoX2Nsb3Nlb3V0':
+                        #print(txnRaw['id'])
+                        #print(decodedNote)
+                        
+                        #print('\n')
+                        result = ['Algodex']
+                #-------------------------------------------
+                #AlgoFi
+                    elif appArg[0] == 'c2Vm': result = ['AlgoFi', 'Fixed Input']
+                    elif appArg[0] == 'c2Zl': result = ['AlgoFi', 'Fixed Output']
+                    elif appArg[0] == 'cA==':
+                        if txnRaw['group'] in groupDB and groupDB[txnRaw['group']] == ['AlgoFi', 'Fixed Input']:
+                            result = ['AlgoFi', 'Zap']
+                        else:
+                            result = ['AlgoFi', 'LP Mint']
+                    elif appArg[0] == 'YmEybw==': result = ['AlgoFi', 'LP Burn']
 
     return result
 ##--------##        Row building
@@ -269,7 +297,7 @@ def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB):
     #Exchange/Wallet ID
     
     #Trade Group/Platform 
-    tradeGroup = groupIDCheck(txnRaw, wallet, addressDB, appDB)
+    tradeGroup = groupIDCheck(txnRaw, wallet, addressDB, appDB, groupDB)
     
     #Comment/txnID/groupID
     if 'group' in txnRaw:
@@ -460,13 +488,17 @@ def RemoveFeeRow(multiRow, rowNumber):
     multiRow['txns'] = txnRows
     return multiRow
 
+
+###----------------AMM Functions----------------------###
+
 def swapRow(multiRow, sentRow, receivedRow, swapType, fee, platform):
     #use outgoing txn to build swap row on
     swapRow = sentRow
     swapRow[0] = 'Trade' #txn type
     swapRow[1] = receivedRow[1] #insert received assets
     swapRow[2] = receivedRow[2] #quantity and ID
-    swapRow[8] = str(platform + ': Trade')
+    if swapType == 'Zap': swapRow[8] = str(platform + ': Zap')
+    else: swapRow[8] = str(platform + ': Trade')
     if fee != 0.0:
         ##places trade fees in fee column
         if swapType == 'Fixed Input':
@@ -489,26 +521,26 @@ def lpAdjust(multiRow, action, platform):
     #currently for burns and mints
     #will combine two assets and one LP token txn into two rows
     #shows as a Trade. Half the LP tokens for one asset, half for the other.
-    slippageRow = ''
+    slippageRow = []
     #row checking
     if platform == 'Tinyman':
         lpRow1 = txns[0]
         lpRow2 = txns[1]
         tokenRow = txns[2]
-    if platform == 'Pact':
+    if platform == 'Pact' or platform == 'AlgoFi':
         if action == 'Mint':
             lpRow1 = txns[0]
             lpRow2 = txns[1]
             tokenRow = txns[2]
-            if len(txns) > 3: slippageRow = txns[3]
+            if len(txns) > 3:
+                slippageRow = txns[3]
+                slippageRow[8] = str(platform + ': LP Slippage')
         if action == 'Burn':
             tokenRow = txns[0]
             lpRow1 = txns[1]
             if tokenRow[1] == '.000000' and lpRow1[1] == '.000000':
                 return multiRow #solves for burn txns with no assets transfering
             lpRow2 = txns[2]
-
-
     
     lpRow1[0] = 'Trade'
     lpRow1[8] = str(platform + ': LP ' + action)
@@ -525,20 +557,20 @@ def lpAdjust(multiRow, action, platform):
         lpRow2[3] = (float(tokenRow[3]))/2
         lpRow2[4] = tokenRow[4]
 
-    if slippageRow == '':
+    if slippageRow != []:
         multiRow['groupRows'] = [lpRow1, lpRow2, slippageRow]
     else: multiRow['groupRows'] = [lpRow1, lpRow2]
     return multiRow
 
-def tmPoolRedeem(multiRow, txn):
-    #could have been in the main script really, seperated for a e s t h e t i c s
-    txn[8] = 'Tinyman: Redeem Slippage'
-    multiRow['groupRows'] = [txn]
+def slippage(multiRow, txn, platform, slippageType):
+    if 'groupRows' in multiRow: groupRows = multiRow['groupRows']
+    else: groupRows = []
+    txn[8] = str(platform + ': ' + slippageType + ' Slippage')
+    groupRows.append(txn)
+    multiRow['groupRows'] = groupRows
     return multiRow
 
-
-
-
+###------------------------------------------------------------------
 
 
 

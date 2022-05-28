@@ -140,7 +140,7 @@ for txnID in txnOrder:  #check each txn in chronological order
     #Group IDs
     if 'group' in txnRaw:
         #print(txnID)
-        groupDef = ACSVFunc.groupIDCheck(txnRaw, wallet, addressDB, appDB) #check txn for group defining specifics
+        groupDef = ACSVFunc.groupIDCheck(txnRaw, wallet, addressDB, appDB, groupDB) #check txn for group defining specifics
         if txnRaw['group'] not in groupDB:  #NEW Group ID
             workingGroup = txnRaw['group']  #track current group ID
             if groupDef != '':  #if group can be defined by this txn
@@ -239,19 +239,36 @@ for txnID in txnOrder:
                     elif 'LP Burn' in groupDef[1]:
                         multiRow = ACSVFunc.lpAdjust(multiRow, 'Burn', 'Tinyman')
                     elif 'Redeem slippage' in groupDef[1]:
-                        multiRow = ACSVFunc.tmPoolRedeem(multiRow, txns[0])
+                        multiRow = ACSVFunc.slippage(multiRow, txns[0], 'Tinyman', 'Pooled')
                 #Pact, currently unsure how to tell fixed end and fee rate
                 if 'Pact' in groupDef:
                     txns = multiRow['txns']
-                    #print(txns)
                     if 'Trade' in groupDef and len(txns) == 2: #Needs only 2 txns.
                         multiRow = ACSVFunc.swapRow(multiRow, txns[0], txns[1], 'Fixed Input', 0.0, 'Pact')#0 fees until i can tell which is which
                     elif 'LP Mint' in groupDef[1]:
                         multiRow = ACSVFunc.lpAdjust(multiRow, 'Mint', 'Pact')
                     elif 'LP Burn' in groupDef[1]:
                         multiRow = ACSVFunc.lpAdjust(multiRow, 'Burn', 'Pact')
-                
-                
+                #AlgoFi. unsure of swap fees currently
+                if 'AlgoFi' in groupDef:
+                    txns = multiRow['txns']
+                    if 'Fixed Input' in groupDef and len(txns) < 2:
+                        multiRow = ACSVFunc.swapRow(multiRow, txns[0], txns[1], 'Fixed Input', 0.0, 'AlgoFi')
+                    if 'Fixed Output' in groupDef:
+                        multiRow = ACSVFunc.swapRow(multiRow, txns[0], txns[1], 'Fixed Output', 0.0, 'AlgoFi')
+                        multiRow = ACSVFunc.slippage(multiRow, txns[2], 'AlgoFi', 'Trade')
+                    if 'LP Mint' in groupDef:
+                        multiRow = ACSVFunc.lpAdjust(multiRow, 'Mint', 'AlgoFi')
+                    if 'LP Burn' in groupDef:
+                        multiRow = ACSVFunc.lpAdjust(multiRow, 'Burn', 'AlgoFi')
+                    if 'Zap' in groupDef:
+                        multiRow = ACSVFunc.swapRow(multiRow, txns[0], txns[1], 'Fixed Input', 0.0, 'AlgoFi')
+                        groupRows = multiRow['groupRows']
+                        multiRow = ACSVFunc.swapRow(multiRow, groupRows[0], txns[4], 'Zap', 0.0, 'AlgoFi')
+                        if len(txns) > 5: multiRow = ACSVFunc.slippage(multiRow, txns[5], 'AlgoFi', 'Zap')
+                        #for txn in txns:
+                        #    print(txn)
+                        #if len(txns) > 2: print(txns)
 
 
                 #----Staking/deposits and pseudo-accounts---#
