@@ -139,7 +139,6 @@ for txnID in txnOrder:  #check each txn in chronological order
         
     #Group IDs
     if 'group' in txnRaw:
-        #print(txnID)
         groupDef = ACSVFunc.groupIDCheck(txnRaw, wallet, addressDB, appDB, groupDB) #check txn for group defining specifics
         if txnRaw['group'] not in groupDB:  #NEW Group ID
             workingGroup = txnRaw['group']  #track current group ID
@@ -217,14 +216,12 @@ for txnID in txnOrder:
         if firstRow != 'y':
             #this row not related to previous group
             #SAVE GROUP ROW HERE-------------------
-            #print('save group')
 
 
     ##-------------------------------------------------------
           #HANDLE GROUP TYPES HERE
             if 'groupDef' in multiRow:
                 groupDef = multiRow['groupDef']
-                #print(multiRow)
                 
                 #Tinyman Group Handling
                 if 'Tinyman' in groupDef:
@@ -269,11 +266,16 @@ for txnID in txnOrder:
                         groupRows = multiRow['groupRows']
                         multiRow = ACSVFunc.swapRow(multiRow, groupRows[0], txns[4], 'Zap', 0.0, 'AlgoFi')
                         if len(txns) > 5: multiRow = ACSVFunc.slippage(multiRow, txns[5], 'AlgoFi', 'Zap')
-                        #for txn in txns:
-                        #    print(txn)
-                        #if len(txns) > 2: print(txns)
                 elif 'AlgoDex' in groupDef:
-                    print(multiRow)
+                    txns = multiRow['txns']
+                    if 'Take Order - Buy' in groupDef:
+                        multiRow = ACSVFunc.swapRow(multiRow, txns[1], txns[0], 'Take Order', 0.0, 'AlgoDex')
+                        if 'Close' not in groupDef:
+                            multiRow = ACSVFunc.RemoveFeeRow(multiRow, 2)
+                    elif 'Take Order - Sell' in groupDef:
+                        multiRow = ACSVFunc.swapRow(multiRow, txns[0], txns[1], 'Take Order', 0.0, 'AlgoDex')
+                        if 'Close' not in groupDef:
+                            multiRow = ACSVFunc.RemoveFeeRow(multiRow, 2)
 
 
                 #----Staking/deposits and pseudo-accounts---#

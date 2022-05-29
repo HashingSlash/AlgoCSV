@@ -130,24 +130,49 @@ def algodexGroup(decodedNote, wallet):
         tradeDetails = json.loads(tradeDetails)
         result = ['AlgoDex']
         for entry in tradeDetails:
-            if '[open]' in entry:
-                result = ['AlgoDex', 'Place Order']
-            elif '[close]' in entry:
-                result = ['AlgoDex', 'Cancel Order']
+            #print(entry)
+            if '[open]_[algo]' in entry:
+                result = ['AlgoDex', 'Make Buy Order']
+            elif '[open]_[asa]' in entry:
+                result = ['AlgoDex', 'Make Sell Order']
+            elif '[close]_[algo]' in entry:
+                result = ['AlgoDex', 'Cancel Buy Order']
+            elif '[close]_[asa]' in entry:
+                result = ['AlgoDex', 'Cancel Sell Order']
             elif '[execute' in entry:
                 if wallet in entry:
-                    result = ['AlgoDex', 'Take Order']
+                    #order taker
+                    if 'algo' in entry:
+                        if 'execute_full' in entry:
+                            result = ['AlgoDex', 'Take Order - Buy', 'Close']
+                        elif 'execute_partial' in entry:
+                            result = ['AlgoDex', 'Take Order - Buy']
+                    elif 'asa' in entry:
+                        if 'execute_full' in entry:
+                            result = ['AlgoDex', 'Take Order - Sell', 'Close']
+                        elif 'execute_partial' in entry:
+                            result = ['AlgoDex', 'Take Order - Sell']
                 else:
-            
+                    #order maker
                     tradeDetails = tradeDetails[entry]
                     if tradeDetails['orderCreatorAddr'] == wallet:
-                        result = ['AlgoDex', 'Order Sold']
+                        if 'algo' in entry:
+                            if 'execute_full' in entry:
+                                result = ['AlgoDex', 'Buy Order Taken', 'Close']
+                            elif 'execute_partial' in entry:
+                                result = ['AlgoDex', 'Buy Order Taken']
+                        elif 'asa' in entry:
+                            if 'execute_full' in entry:
+                                result = ['AlgoDex', 'Sell Order Taken', 'Close']
+                            elif 'execute_partial' in entry:
+                                result = ['AlgoDex', 'Sell Order Taken']
+                        
                     #else: print(tradeDetails)
             #else: print(entry)
     except:
         pass
 
-    print(result)
+    #print(result)
     return result
 
 
@@ -172,27 +197,10 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB, groupDB):
 
         #------------------ Check for AlgoDex ------------
         if wallet in decodedNote:
-            print(txnRaw['id'])
             result = algodexGroup(decodedNote, wallet)
-            if 'application-args' in txnDetails:
-                appArg = txnDetails['application-args']
-                #if appArg != []:
-                #    
-                #    #print(txnRaw['id'])
-                #    if appArg[0] == 'ZXhlY3V0ZQ==':     #execute
-                #        result = algodexGroup(decodedNote, wallet)
-                #    elif appArg[0] == 'ZXhlY3V0ZV93aXRoX2Nsb3Nlb3V0':   #execute with closeout
-                #        result = algodexGroup(decodedNote, wallet)
-                #    elif appArg[0] == 'b3Blbg==':   #open
-                #        result = algodexGroup(decodedNote, wallet)
-                #    elif appArg[0] == 'Y2xvc2U=':   #close
-                #        result = algodexGroup(decodedNote, wallet)
-                #    else:
-                #        pass    #print(decodedNote)
         #----------------------------------------------
         
     if txnRaw['tx-type'] == 'appl':
-        #else: print(str(txnDetails['application-id']))
         if 'local-state-delta' in txnRaw:
             txnLsd = txnRaw['local-state-delta'][0]
             if 'delta' in txnLsd:
@@ -535,7 +543,7 @@ def swapRow(multiRow, sentRow, receivedRow, swapType, fee, platform):
     swapRow[1] = receivedRow[1] #insert received assets
     swapRow[2] = receivedRow[2] #quantity and ID
     if swapType == 'Zap': swapRow[8] = str(platform + ': Zap')
-    else: swapRow[8] = str(platform + ': Trade')
+    else: swapRow[8] = str(platform + ': ' + swapType)
     if fee != 0.0:
         ##places trade fees in fee column
         if swapType == 'Fixed Input':
@@ -544,12 +552,14 @@ def swapRow(multiRow, sentRow, receivedRow, swapType, fee, platform):
             platformFee = float(((feeAsset * 100)/i) - feeAsset)
             swapRow[5] = platformFee
             swapRow[6] = swapRow[2]
+            swapRow[8] = str(platform + ': Trade')
         if swapType == 'Fixed Output':
             i = float(1 - (fee / 100))
             feeAsset = float(swapRow[3])
             platformFee = float(feeAsset - (feeAsset * i))
             swapRow[5] = platformFee
             swapRow[6] = swapRow[4]
+            swapRow[8] = str(platform + ': Trade')
     multiRow['groupRows'] = [swapRow]
     return multiRow
 
