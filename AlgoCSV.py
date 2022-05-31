@@ -262,10 +262,8 @@ for txnID in txnOrder:
                     if 'LP Burn' in groupDef:
                         multiRow = ACSVFunc.lpAdjust(multiRow, 'Burn', 'AlgoFi')
                     if 'Zap' in groupDef:
-                        multiRow = ACSVFunc.swapRow(multiRow, txns[0], txns[1], 'Fixed Input', 0.0, 'AlgoFi')
-                        groupRows = multiRow['groupRows']
-                        multiRow = ACSVFunc.swapRow(multiRow, groupRows[0], txns[4], 'Zap', 0.0, 'AlgoFi')
-                        if len(txns) > 5: multiRow = ACSVFunc.slippage(multiRow, txns[5], 'AlgoFi', 'Zap')
+                        multiRow = ACSVFunc.zap(multiRow)
+                        
                 elif 'AlgoDex' in groupDef:
                     txns = multiRow['txns']
                     if 'Take Order - Buy' in groupDef:

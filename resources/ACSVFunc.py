@@ -542,8 +542,7 @@ def swapRow(multiRow, sentRow, receivedRow, swapType, fee, platform):
     swapRow[0] = 'Trade' #txn type
     swapRow[1] = receivedRow[1] #insert received assets
     swapRow[2] = receivedRow[2] #quantity and ID
-    if swapType == 'Zap': swapRow[8] = str(platform + ': Zap')
-    else: swapRow[8] = str(platform + ': ' + swapType)
+    swapRow[8] = str(platform + ': ' + swapType)
     if fee != 0.0:
         ##places trade fees in fee column
         if swapType == 'Fixed Input':
@@ -617,6 +616,23 @@ def slippage(multiRow, txn, platform, slippageType):
     multiRow['groupRows'] = groupRows
     return multiRow
 
+def zap(multiRow):
+    txns = multiRow['txns']
+    zapRow = txns[0]
+    lpRow = txns[3]
+    tokenRow = txns[4]
+    zapRow[0] = 'Trade'
+    zapRow[8] = 'AlgoFi: Zap'
+    zapAmount = float(zapRow[3]) + float(lpRow[3])
+    zapRow[3] = zapAmount
+    zapRow[1] = tokenRow[1]
+    zapRow[2] = tokenRow[2]
+    multiRow['groupRows'] = [zapRow]
+
+    if len(txns) == 6:
+        slippage(multiRow, txns[5], 'AlgoFi', 'Zap')
+        
+    return multiRow
 ###------------------------------------------------------------------
 
 
