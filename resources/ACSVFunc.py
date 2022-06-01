@@ -634,7 +634,40 @@ def zap(multiRow):
         
     return multiRow
 ###------------------------------------------------------------------
+###         Escrow functions
 
+def escrowTxn(multiRow, rowNumber, txnNote, platform):
+    txns = multiRow['txns']
+    if 'groupRows' in multiRow: groupRows = multiRow['groupRows']
+    else: groupRows = []
+    #shortening names for readability. escrow-ingRow
+    ingRow = txns[rowNumber]
+    inQuantity = ''
+    inTicker = ''
+    outQuantity = ''
+    outTicker = ''
+    feeRow = ''
+    feeTicker = ''
+    
+    
+    if ingRow[3] != '':
+        #Processing a row out of wallet into escrow
+        escrowType = 'Deposit'
+        inQuantity = ingRow[3]
+        inTicker = ingRow[4]
+    elif ingRow[1] != '':
+        escrowType = 'Withdrawal'
+        outQuantity = ingRow[3]
+        outTicker = ingRow[4]
+    else:
+        print('Escrow - NOT (In OR Out)')
+    #shortening names for readability. escrow-edRow
+    edRow = [escrowType, inQuantity, inTicker, outQuantity, outTicker,
+             feeRow, feeTicker, txnNote, platform, ingRow[9], ingRow[10]]
+    groupRows.append(ingRow)
+    groupRows.append(edRow)
+    multiRow['groupRows'] = groupRows
+    return multiRow
 
 
 

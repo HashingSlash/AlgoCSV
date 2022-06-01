@@ -263,8 +263,9 @@ for txnID in txnOrder:
                         multiRow = ACSVFunc.lpAdjust(multiRow, 'Burn', 'AlgoFi')
                     if 'Zap' in groupDef:
                         multiRow = ACSVFunc.zap(multiRow)
-                        
+                #AlgoDex.        
                 elif 'AlgoDex' in groupDef:
+                    
                     txns = multiRow['txns']
                     if 'Take Order - Buy' in groupDef:
                         multiRow = ACSVFunc.swapRow(multiRow, txns[1], txns[0], 'Take Order', 0.0, 'AlgoDex')
@@ -274,6 +275,11 @@ for txnID in txnOrder:
                         multiRow = ACSVFunc.swapRow(multiRow, txns[0], txns[1], 'Take Order', 0.0, 'AlgoDex')
                         if 'Close' not in groupDef:
                             multiRow = ACSVFunc.RemoveFeeRow(multiRow, 2)
+                    elif 'Make Sell' in groupDef[1]:
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'AlgoDex Orders', 'AlgoDex')
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 1, 'AlgoDex Orders', 'AlgoDex')
+                    elif 'Make Buy' in groupDef[1]:
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'AlgoDex Orders', 'AlgoDex')
 
 
                 #----Staking/deposits and pseudo-accounts---#
