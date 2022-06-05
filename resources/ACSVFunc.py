@@ -140,6 +140,9 @@ def algodexGroup(decodedNote, wallet):
             elif '[close]_[asa]' in entry:
                 result = ['AlgoDex', 'Cancel Sell Order']
             elif '[execute' in entry:
+
+                ############-----------------ALGODEX TXN FILTERING.
+                #print(entry)
                 if wallet in entry:
                     #order taker
                     if 'algo' in entry:
@@ -156,9 +159,24 @@ def algodexGroup(decodedNote, wallet):
                     #order maker
                     tradeDetails = tradeDetails[entry]
                     if tradeDetails['orderCreatorAddr'] == wallet:
+                        if tradeDetails['escrowOrderType'] == 'buy':
+                        #derive how much ALGO was sent to taker
+                            escrowPrice = tradeDetails['price']
+                            escrowAsset = tradeDetails['assetId']
+                        elif tradeDetails['escrowOrderType'] == 'sell':
+                        #derive how much ASA was sent to taker
+                            escrowPrice = tradeDetails['price']
+                            escrowAsset = tradeDetails['assetId']
+
+                        #if 'e' in str(escrowPrice):
+                            ###Defaults to 6 decimals.
+                            #could posibly read digits after 'e' and insert into format function below
+                            #still functions accuratly as a float however
+                            #escrowPrice = (format(escrowPrice, 'f'))
+                        
                         if 'algo' in entry:
                             if 'execute_full' in entry:
-                                result = ['AlgoDex', 'Buy Order Taken', 'Close']
+                                result = ['AlgoDex', 'Buy Order Taken','Close']
                             elif 'execute_partial' in entry:
                                 result = ['AlgoDex', 'Buy Order Taken']
                         elif 'asa' in entry:
@@ -206,7 +224,7 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB, groupDB):
             if 'delta' in txnLsd:
                 txnLsdDelta = txnLsd['delta'][0]
                 if txnLsdDelta['key'] == 'dXNh': result = ['AlgoFi', 'Opt in']
-
+    
         
 
             
@@ -301,7 +319,7 @@ def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB):
         buyAmount = ''
         
     #Buy/In Cur.
-    if 'receiver' in txnDetails and txnDetails['receiver'] == wallet:
+    if 'receiver' in txnDetails and txnDetails['receiver'] == wallet and buyAmount != '':
         if txnRaw['tx-type'] == 'pay':
             buyCur = 'ALGO'
         elif txnRaw['tx-type'] == 'axfer' and 'asset-id' in txnDetails:
@@ -379,7 +397,8 @@ def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB):
     if 'Pact' and 'Rewards' in tradeGroup:
         txnType = 'Staking'
         tradeGroup = 'Pact: Rewards'
-        
+
+
 
     #assemble row    
     row = [txnType, buyAmount, buyCur, sellAmount, sellCur,
@@ -482,8 +501,9 @@ def decimal(baseQ, asaID, asaDB):
 #--------------------------------------------------#
     #MULTIROW FUNCS
 
-def multiRowProcessing(multiRow, txnRow, txnRaw, groupDB):
+def multiRowProcessing(multiRow, txnRow, txnRaw, groupDB, asaDB, wallet):
     rowDef = txnRow[8]
+    multiRow['round'] = str(txnRaw['confirmed-round'])
     multiRowTxns = multiRow['txns']
     multiRow['groupID'] = str(txnRaw['group'])
     multiRow['date'] = str(txnRow[10])
@@ -495,6 +515,18 @@ def multiRowProcessing(multiRow, txnRow, txnRaw, groupDB):
     #Group description
     if multiRow['groupID'] in groupDB:
         multiRow['groupDef'] = groupDB[multiRow['groupID']]
+
+        
+        ###Algodex order-taken detail catcher
+        #if 'AlgoDex' in groupDB[multiRow['groupID']]:
+            #if 'Order Taken' in groupDB[multiRow['groupID']][1]:
+                #escrowTradeDetails = groupDB[multiRow['groupID']][2]
+                #print(escrowTradeDetails)
+                #print(txnRow)
+                
+                        
+            #else: print(groupDB[multiRow['groupID']])
+                
     else: multiRow['groupDef'] = ''
 
     
@@ -519,10 +551,11 @@ def multiRowProcessing(multiRow, txnRow, txnRaw, groupDB):
         if txnRow[8] != 'Pact: Rewards': txnRow[8] = multiRow['groupDef']
         multiRowTxns.append(txnRow)
         multiRow['txns'] = multiRowTxns
-        
+
+
+
+
     return multiRow
-
-
 
 def RemoveFeeRow(multiRow, rowNumber):
     netOpFees = float(multiRow['Network Operation Fees'])
@@ -634,17 +667,159 @@ def zap(multiRow):
         
     return multiRow
 ###------------------------------------------------------------------
+###         Escrow functions
+
+def escrowTxn(multiRow, rowNumber, platform, function):
+    txns = multiRow['txns']
+    if 'groupRows' in multiRow: groupRows = multiRow['groupRows']
+    else: groupRows = []
+    #shortening names for readability. escrow-ingRow
+    ingRow = txns[rowNumber]
+    inQuantity = ''
+    inTicker = ''
+    outQuantity = ''
+    outTicker = ''
+    feeQuantity = ''
+    feeTicker = ''
+    
+    
+    if ingRow[3] != '':
+        #Processing a row out of wallet into escrow
+        escrowType = 'Deposit'
+        inQuantity = ingRow[3]
+        inTicker = ingRow[4]
+    elif ingRow[1] != '':
+        escrowType = 'Withdrawal'
+        outQuantity = ingRow[1]
+        outTicker = ingRow[2]
+    else:
+        print('Escrow - NOT (In OR Out)')
+    if function == 'AlgoDex: Cancel Order':
+        if rowNumber == 1:
+            #returning 0.5 ALGO sent when creating order,
+            #minus 0.005 for netOp fees
+            feeQuantity = '0.005'
+            feeTicker = 'ALGO'
+    #shortening names for readability. escrow-edRow
+    edRow = [escrowType, inQuantity, inTicker, outQuantity, outTicker,
+             feeQuantity, feeTicker, platform, function, ingRow[9], ingRow[10]]
+    if escrowType == 'Deposit':
+        groupRows.append(ingRow)
+        groupRows.append(edRow)
+    elif escrowType == 'Withdrawl':
+        groupRows.append(edRow)
+        groupRows.append(ingRow)
+    multiRow['groupRows'] = groupRows
+    return multiRow
+
+def algoDexOrderTaken(multiRow, txnDB, groupDB, asaDB, wallet):
+    
+    #tradeDetails = tealTxnDB(multiRow)[1]
+    #load correct txn
+    groupTxnList = tealTxnDB(multiRow)
+    orderTakenRows = []
+    escrowRows = []
+    txns = multiRow['txns']
+    tradeRow = txns[0]
 
 
+    
+    for groupTxn in groupTxnList:
+        print(groupTxn['id'])
+        print(multiRow['groupID'])
+        print(multiRow['groupDef'])
+        print('\n')
+        if 'note' in groupTxn:
+            decodedNote = str(base64.b64decode(groupTxn['note']))
+            tradeDetails = decodedNote[2::]
+            tradeDetails = tradeDetails[:-1:]
+            tradeDetails = json.loads(tradeDetails)
+            #print(tradeDetails)
+            for entry in tradeDetails:
+                entryDetails = tradeDetails[entry] 
+                entry = entry
+                escrowAddress = entryDetails['escrowAddr']
+            groupTxnDetails = txnTypeDetails(groupTxn)    
+
+                
+            
+            if 'receiver' in groupTxnDetails:
+                if groupTxnDetails['receiver'] in entry and groupTxn['sender'] == escrowAddress:
+                    tradeAmount = groupTxnDetails['amount']
+                    if 'Sell' in multiRow['groupDef'][1]:
+                        tradeAsset = groupTxnDetails['asset-id']
+                        tradeAmount = decimal(tradeAmount, tradeAsset, asaDB)
+                        tradeAssetDetails = asaDB[str(tradeAsset)]
+                        tradeAsset = tradeAssetDetails['ticker']
+                    elif 'Buy' in multiRow['groupDef'][1]:
+                        tradeAsset = 'ALGO'
+                        tradeAmount = decimal(tradeAmount, tradeAsset, asaDB)
+                    escrowRow = ['', '', '', tradeAmount, tradeAsset, '', '', 'AlgoDex - Escrow', '', multiRow['groupID'], tradeRow[10]]
+
+                    
+                    multiRow = swapRow(multiRow, escrowRow, tradeRow, 'Order Taken', 0.0, 'AlgoDex')
+                    groupRows = multiRow['groupRows']
+                    escrowTradeRow = groupRows[0]
+                    eRows1 = ['Withdrawal', '', '', tradeRow[1], tradeRow[2], '', '', 'AlgoDex - Escrow', 'AlgoDex: Order Taken', tradeRow[9], tradeRow[10]]
+                    eRows2 = ['Deposit', tradeRow[1], tradeRow[2], '', '', '', '', tradeRow[7], 'AlgoDex: Order Taken', tradeRow[9], tradeRow[10]]
+                    orderTakenRows = [escrowTradeRow, eRows1, eRows2]
+                    
+                    ####it finally worked!!!!
+                    
+            if 'close-amount' in groupTxnDetails and groupTxnDetails['close-amount'] > 0:
+                print('close')
+                print(groupTxnDetails)
+                if 'close-to' in groupTxnDetails and groupTxnDetails['close-to'] == wallet:
+                    print('remainder - ASA')
+                    closeAmount = groupTxnDetails['close-amount']
+                    closeAsset = groupTxnDetails['asset-id']
+                    closeAmount = decimal(closeAmount, closeAsset, asaDB)
+                    closeAssetDetails = asaDB[str(closeAsset)]
+                    closeAsset = tradeAssetDetails['ticker']
+                    eRows3 = ['Withdrawal', '', '', closeAmount, closeAsset, '', '', 'AlgoDex - Escrow', 'AlgoDex: Order Taken', tradeRow[9], tradeRow[10]]
+                    eRows4 = ['Deposit', closeAmount, closeAsset, '', '', '', '', tradeRow[7], 'AlgoDex: Order Taken', tradeRow[9], tradeRow[10]]
+                    escrowRows = [eRows3, eRows4]
+                if 'close-remainder-to' in groupTxnDetails and groupTxnDetails['close-remainder-to'] == wallet:
+                    print('remainder - ALGO')
+                    closeAmount = groupTxnDetails['close-amount']
+                    closeAsset = 'ALGO'
+                    closeAmount = decimal(closeAmount, closeAsset, asaDB)
+                    print(closeAmount, closeAsset)
+                    eRows3 = ['Withdrawal', '', '', closeAmount, closeAsset, '', '', 'AlgoDex - Escrow', 'AlgoDex: Order Taken', tradeRow[9], tradeRow[10]]
+                    eRows4 = ['Deposit', closeAmount, closeAsset, '', '', '', '', tradeRow[7], 'AlgoDex: Order Taken', tradeRow[9], tradeRow[10]]
+                    escrowRows = [eRows3, eRows4]
+
+    if escrowRows == []:
+        multiRow['groupRows'] = orderTakenRows
+    else:
+        for eRow in escrowRows:
+            orderTakenRows.append(eRow)
+        multiRow['groupRows'] = orderTakenRows
+
+    
+    print('\n')
+    multiRow['groupRows'] = orderTakenRows
+    print(multiRow['groupRows'])
+    return multiRow
 
 
+##--------------------tealTxnDB-------------------------------------
+def tealTxnDB(multiRow):
+    print('\n')
+    print('-------------collecting non-wallet group txns')
+    groupTxns = []
+    groupID = multiRow['groupID']
+    groupRound = multiRow['round']
+    groupResponse = requests.get('https://algoexplorerapi.io/idx2/v2/blocks/' + str(groupRound))
+    groupRoundJson = groupResponse.json()
+    roundTxns = groupRoundJson['transactions']
+    for txn in roundTxns:
+        #if txn group matches, and the txn is NOT already in the DB. (This is the associated app call. contains needed info)
+        if 'group' in txn and txn['group'] == groupID:
+            #print(txn['id'])
+            groupTxns.insert(0, txn)
 
-
-
-
-
-
-
+    return groupTxns
 
 
 
