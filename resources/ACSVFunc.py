@@ -810,7 +810,7 @@ def tealTxnDB(multiRow):
     groupTxns = []
     groupID = multiRow['groupID']
     groupRound = multiRow['round']
-    groupResponse = requests.get('https://algoexplorerapi.io/idx2/v2/blocks/' + str(groupRound))
+    groupResponse = requests.get('https://algoindexer.algoexplorerapi.io/v2/blocks/' + str(groupRound))
     groupRoundJson = groupResponse.json()
     roundTxns = groupRoundJson['transactions']
     for txn in roundTxns:
