@@ -35,6 +35,7 @@ try:
     groupDB = ACSVFunc.loadDB('resources/groupDB.json')    
     addressDB = ACSVFunc.loadDB('resources/addressDB.json')
     appDB = ACSVFunc.loadDB('resources/appDB.json')
+    algodexTakenDB = ACSVFunc.loadDB('resources/algodexTakenDB.json')
     prerunTxnCount = len(txnOrder)
     print(str(len(txnOrder)) + ' txns loaded')
     print(str(len(groupDB.keys())) + ' groups loaded')
@@ -44,6 +45,7 @@ except IOError: #Create empty list and dictionaries for storing info
     txnOrder = []
     txnDB = {}
     groupDB = {}
+    algodexTakenDB = {}
     prerunTxnCount = 0
     ACSVFunc.importAlgoRolo()
     addressDB = ACSVFunc.loadDB('resources/addressDB.json')
@@ -299,10 +301,66 @@ for txnID in txnOrder:
                         multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'AlgoDex - Escrow', 'AlgoDex: Cancel Order')
                         multiRow = ACSVFunc.escrowTxn(multiRow, 1, 'AlgoDex - Escrow', 'AlgoDex: Cancel Order')
                     elif 'Order Taken' in groupDef[1]:
-                        ##
-                        multiRow = ACSVFunc.algoDexOrderTaken(multiRow, txnDB, groupDB, asaDB, wallet)
+                        if multiRow ['groupID'] in algodexTakenDB:
+                            multiRow = algodexTakenDB[multiRow['groupID']]
+                        else:
+                            multiRow = ACSVFunc.algoDexOrderTaken(multiRow, txnDB, groupDB, asaDB, wallet)
+                            algodexTakenDB[multiRow['groupID']] = multiRow
+
+                #Yieldly, the 10000 pound flamingo
+                elif 'Yieldly' in groupDef:
+                    txns = multiRow['txns']
+                    if 'Deposit' in groupDef:
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'Yieldly', str('Yieldly: ' + groupDef[2]))
+                    elif 'Withdrawal' in groupDef:
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'Yieldly', str('Yieldly: ' + groupDef[2]))
+                        if len(txns) == 2:
+                            #teal3 pools
+                            multiRow = ACSVFunc.RemoveFeeRow(multiRow, 1)
+                    elif 'Claim' in groupDef:
+                        claimRows = 0
+                        for txn in txns:
+                            claimRows += 1
+                            #print(claimRows)
+                            #print(txn)
+                            if txn[0] == 'Withdrawal':
+                                multiRow = ACSVFunc.RemoveFeeRow(multiRow, (claimRows - 1))
+                            elif txn[0] == 'Deposit':
+                                txn[0] = 'Staking'
+                                txn[8] = 'Yieldly: Rewards'
+
+                        multiRow['groupRows'] = multiRow['txns']
+                    elif 'Close T3' in groupDef:
+                        if len(txns) == 1:
+                            stakingRow = txns[0]
+                            stakingRow[0] = 'Staking'
+                            stakingRow[8] = 'Yieldly: Rewards'
+                            multiRow['groupRows'] = [stakingRow]
+                        if len(txns) == 2:
+                            stakingRow = txns[0]
+                            stakingRow[0] = 'Staking'
+                            stakingRow[8] = 'Yieldly: Rewards'
+                            multiRow['groupRows'] = [stakingRow]
+                            multiRow = ACSVFunc.escrowTxn(multiRow, 1, 'Yieldly', 'Yieldly: Rewards')
+                        if len(txns) > 2:    
+                            print('help')
+                    elif 'Close T5' in groupDef:
+                        stakingRow = txns[1]
+                        stakingRow[0] = 'Staking'
+                        stakingRow[8] = 'Yieldly: Rewards'
+                        multiRow['groupRows'] = [stakingRow]
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'Yieldly', 'Yieldly: Rewards')
+                        
 
 
+                    #if 'Close' in groupDef[2]:        
+                    #   #print(multiRow['groupID'])
+                        #print(multiRow)
+                    #    
+                        
+                    #if 'groupRows' in multiRow: print(multiRow['groupRows'])
+                    #else: print('Failed')
+                        #print('\n')
         
 
     ##--------------------------------------------------------
@@ -311,6 +369,7 @@ for txnID in txnOrder:
                 groupRows = multiRow['groupRows']
             else: groupRows = multiRow['txns']   
             for gRow in groupRows:
+                #print(gRow)
                 writer.writerow(gRow)
             
             #write rewards from group if any to csv    
@@ -378,7 +437,7 @@ for txnID in txnOrder:
   
 
     
-
+ACSVFunc.saveDB(algodexTakenDB, 'resources/algodexTakenDB')
 algocsv.close()
 print('\n')
 print('Job Done!')
