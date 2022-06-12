@@ -350,17 +350,33 @@ for txnID in txnOrder:
                         stakingRow[8] = 'Yieldly: Rewards'
                         multiRow['groupRows'] = [stakingRow]
                         multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'Yieldly', 'Yieldly: Rewards')
+
+                #AlgoFund                        
+                elif 'AlgoFund' in groupDef:
+                    txns = multiRow['txns']
+                    
+                    if 'Deposit' in groupDef:
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'AlgoFund', str('AlgoFund: ' + groupDef[2]))
                         
+                    elif 'Withdrawal' in groupDef or 'Claim' in groupDef:
+                        multiRow = ACSVFunc.RemoveFeeRow(multiRow, 0)
+                        stakingRow = txns[0]
+                        stakingRow[0] = 'Staking'
+                        stakingRow[8] = 'AlgoFund: Rewards'
+                        multiRow['groupRows'] = [stakingRow]
+
+                        
+                    ## - Come back to Governance Vote after -maybe- doing a voting function. 
+                        
+                    #elif 'Vote' in groupDef:
+                    #    print(groupDef[2])
+                    #    print(multiRow['groupID'])
+                    #    for txn in txns:
+                    #        print(txn)
+                    #    print('\n')
+                    
 
 
-                    #if 'Close' in groupDef[2]:        
-                    #   #print(multiRow['groupID'])
-                        #print(multiRow)
-                    #    
-                        
-                    #if 'groupRows' in multiRow: print(multiRow['groupRows'])
-                    #else: print('Failed')
-                        #print('\n')
         
 
     ##--------------------------------------------------------

@@ -276,19 +276,31 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB, groupDB):
                     elif appArg[0] == appArg[0] == 'YmFpbA==':
                         result = [result[0], result[1], 'Close T5']
 
+                
+                #---------------------------------------
 
-                #if 'AlgoFund' in result:
-                    #    
-                    #if len(result) < 3:
-                    #
-                    #    try: print(txnRaw['group'])
-                    #    except: print(txnRaw['id'])
-                    #    print(result)
-                    # 
-                    #    for arg in appArg:
-                    #        decodedArg = str(base64.b64decode(arg))
-                    #        print(arg + ' - ' + decodedArg)
-                    #    print('\n')
+                if 'AlgoFund' in result:
+                    if appArg[0] == 'Uw==':
+                        result = [result[0], result[1], 'Deposit']
+                    if appArg[0] == 'Vw==':
+                        result = [result[0], result[1], 'Withdrawal']
+                    if appArg[0] == 'Qw==':
+                        result = [result[0], result[1], 'Claim']
+                    if appArg[0] == 'Vg==':
+                        result = [result[0], result[1], 'Vote']
+                        
+                    if len(result) < 3:
+                    
+                        try: print(txnRaw['group'])
+                        except: print(txnRaw['id'])
+                        print(result)
+                     
+                        for arg in appArg:
+                            decodedArg = str(base64.b64decode(arg))
+                            print(arg + ' - ' + decodedArg)
+                        print('\n')
+
+                        
                 #-----------------------------------------
                 else:
                     if appArg[0] == 'U1dBUA==': result = ['Pact', 'Trade']
