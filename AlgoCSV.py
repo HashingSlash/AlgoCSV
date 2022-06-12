@@ -277,6 +277,24 @@ for txnID in txnOrder:
                         multiRow = ACSVFunc.lpAdjust(multiRow, 'Burn', 'AlgoFi')
                     if 'Zap' in groupDef:
                         multiRow = ACSVFunc.zap(multiRow)
+
+
+                    if 'Mint to Collateral' in groupDef:
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'AlgoFi - Collateral', str('AlgoFi: ' + groupDef[2]))
+                    elif 'Remove Collateral Underlying' in groupDef:
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'AlgoFi - Collateral', str('AlgoFi: ' + groupDef[2]))
+                    elif 'Borrow' in groupDef:
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'AlgoFi - Lending', str('AlgoFi: ' + groupDef[2]))
+                    elif 'Repay Borrow' in groupDef:
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'AlgoFi - Lending', str('AlgoFi: ' + groupDef[2]))
+                    elif 'Claim Rewards' in groupDef:
+                        stakingRow = txns[0]
+                        stakingRow[0] = 'Staking'
+                        stakingRow[8] = 'AlgoFi: Rewards'
+                        multiRow['groupRows'] = [stakingRow]                        
+
+
+                        
                 #AlgoDex.        
                 elif 'AlgoDex' in groupDef:
                     #print(groupDef)

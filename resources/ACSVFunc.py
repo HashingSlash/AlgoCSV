@@ -262,7 +262,7 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB, groupDB):
                         result = ['Tinyman', 'Redeem slippage']
 
                 #------------------------------------
-                if 'Yieldly' in result:
+                elif 'Yieldly' in result:
                     
 
                     if appArg[0] == 'RA==' or appArg[0] == 'Uw==' or appArg[0] == 'c3Rha2U=':
@@ -279,7 +279,7 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB, groupDB):
                 
                 #---------------------------------------
 
-                if 'AlgoFund' in result:
+                elif 'AlgoFund' in result:
                     if appArg[0] == 'Uw==':
                         result = [result[0], result[1], 'Deposit']
                     if appArg[0] == 'Vw==':
@@ -289,7 +289,33 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB, groupDB):
                     if appArg[0] == 'Vg==':
                         result = [result[0], result[1], 'Vote']
                         
-                    if len(result) < 3:
+
+
+                #AlgoFi-------------------------------------
+                elif 'AlgoFi' in result and result[1] != 'USDC/STBL LP-AFns':
+                    
+                    if appArg[0] in ['Zm12', 'dXA=', 'dXBk'] or 'ZHVtbXlf' in appArg[0]:
+                        pass
+
+
+                    elif appArg[0] == 'bXQ=':
+                        result = [result[0], result[1], 'Mint to Collateral']
+                    elif appArg[0] == 'cmN1':
+                        result = [result[0], result[1], 'Remove Collateral Underlying']
+                    
+                    elif appArg[0] == 'Yg==':
+                        result = [result[0], result[1], 'Borrow']
+                    elif appArg[0] == 'cmI=':
+                        result = [result[0], result[1], 'Repay Borrow']
+
+                    elif appArg[0] == 'c2d0':
+                        result = [result[0], result[1], 'Send Governance Txn']
+                    elif appArg[0] == 'Y3I=':
+                        result = [result[0], result[1], 'Claim Rewards']
+
+
+
+                    elif len(result) == 3:
                     
                         try: print(txnRaw['group'])
                         except: print(txnRaw['id'])
@@ -297,19 +323,21 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB, groupDB):
                      
                         for arg in appArg:
                             decodedArg = str(base64.b64decode(arg))
+                            
+                                
                             print(arg + ' - ' + decodedArg)
                         print('\n')
-
                         
                 #-----------------------------------------
                 else:
+                    #Pact---------------------------------
                     if appArg[0] == 'U1dBUA==': result = ['Pact', 'Trade']
                     elif appArg[0] == 'QURETElR': result = ['Pact', 'LP Mint']
                     elif appArg[0] == 'UkVNTElR': result = ['Pact', 'LP Burn']
-                    #-------------------------------------------
 
-                #-------------------------------------------
-                #AlgoFi
+
+
+                    #AlgoFi AMM----------------------------
                     elif appArg[0] == 'c2Vm': result = ['AlgoFi', 'Fixed Input']
                     elif appArg[0] == 'c2Zl': result = ['AlgoFi', 'Fixed Output']
                     elif appArg[0] == 'cA==':
@@ -318,6 +346,10 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB, groupDB):
                         else:
                             result = ['AlgoFi', 'LP Mint']
                     elif appArg[0] == 'YmEybw==': result = ['AlgoFi', 'LP Burn']
+                    #-------------------------------------------
+
+                #-------------------------------------------
+
 
     return result
 
