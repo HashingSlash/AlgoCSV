@@ -376,24 +376,74 @@ for txnID in txnOrder:
                     if 'Deposit' in groupDef:
                         multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'AlgoFund', str('AlgoFund: ' + groupDef[2]))
                         
-                    elif 'Withdrawal' in groupDef or 'Claim' in groupDef:
+                    elif 'Withdrawal' in groupDef:
+                        multiRow = ACSVFunc.RemoveFeeRow(multiRow, 0)
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'AlgoFund', str('AlgoFund: ' + groupDef[2]))
+                        
+                    elif 'Claim' in groupDef:
                         multiRow = ACSVFunc.RemoveFeeRow(multiRow, 0)
                         stakingRow = txns[0]
                         stakingRow[0] = 'Staking'
                         stakingRow[8] = 'AlgoFund: Rewards'
                         multiRow['groupRows'] = [stakingRow]
 
-                        
-                    ## - Come back to Governance Vote after -maybe- doing a voting function. 
-                        
-                    #elif 'Vote' in groupDef:
-                    #    print(groupDef[2])
-                    #    print(multiRow['groupID'])
-                    #    for txn in txns:
-                    #        print(txn)
-                    #    print('\n')
-                    
 
+                #Folks Finance
+                elif 'Folks Finance' in groupDef:
+                    txns = multiRow['txns']
+                    if 'Deposit' in groupDef:
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 1, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
+                    elif 'Withdrawal' in groupDef:
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
+                    elif 'Borrow' in groupDef:
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 1, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
+                    elif 'Repay' in groupDef:
+                        i = 0
+                        for txn in txns:
+                            if i == 0:
+                                stakingRow = txns[0]
+                                stakingRow[0] = 'Staking'
+                                stakingRow[8] = 'Folks Finance: Rewards'
+                                multiRow['groupRows'] = [stakingRow]
+                            else:
+                                multiRow = ACSVFunc.escrowTxn(multiRow, i, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
+                            i += 1
+                    elif 'Increase Borrow' in groupDef:
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
+                    elif 'Reduce Collateral' in groupDef:
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
+                    elif 'Lock & Earn' in groupDef:
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
+                        stakingRow = txns[1]
+                        stakingRow[0] = 'Staking'
+                        stakingRow[8] = 'Folks Finance: Rewards'
+                        multiRow['groupRows'] = [stakingRow]
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 2, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
+                    elif 'Rewards Instant' in groupDef:
+                        stakingRow1 = txns[0]
+                        stakingRow2 = txns[1]
+                        stakingRow1[0] = 'Staking'
+                        stakingRow1[8] = 'Folks Finance: Rewards'
+                        stakingRow2[0] = 'Staking'
+                        stakingRow2[8] = 'Folks Finance: Rewards'
+                        multiRow['groupRows'] = [stakingRow1, stakingRow2]
+                    elif 'Rewards Staking' in groupDef:
+                        depositFee = txns[0]
+                        depositFee[0] = 'Spend'
+                        depositFee[8] = 'Folks Finance: Rewards'
+                        multiRow['groupRows'] = [depositFee]
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 1, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
+                    elif 'Claim' in groupDef:
+                        pass #sorry cant do yet, placeholder
+                    elif 'Open Account' in groupDef:
+                        multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
+                    else:
+                        print(groupDef)
+                        print(multiRow['groupID'])
+                        for txn in txns:
+                            print(txn)
+                        print('\n')
 
         
 
@@ -411,8 +461,8 @@ for txnID in txnOrder:
                 writer.writerow(multiRow['rewards'])
             #write combined Net Op Fees to csv
             if 'Network Operation Fees' in multiRow:
-                netOpFeesRow = ['Other Expense', '', '', '', '',
-                multiRow['Network Operation Fees'], 'ALGO', walletName,
+                netOpFeesRow = ['Other Expense', '', '',
+                multiRow['Network Operation Fees'], 'ALGO', '', '', walletName,
                 'Summed Group Network Fees', str('F-' + multiRow['groupID']), multiRow['date']]
                 writer.writerow(netOpFeesRow)
             
@@ -455,6 +505,13 @@ for txnID in txnOrder:
         #print('\n')
 
         #write single rows as is to csv.
+        if row[8] == 'Network Operation Fees':
+            row[0] = 'Spend'
+            row[3] = row[5]
+            row[4] = 'ALGO'
+            row[5] = ''
+            row[6] = ''
+        
         writer.writerow(row)
         
         if 'inner-txns' in txnRaw:

@@ -313,20 +313,44 @@ def groupIDCheck(txnRaw, wallet, addressDB, appDB, groupDB):
                     elif appArg[0] == 'Y3I=':
                         result = [result[0], result[1], 'Claim Rewards']
 
+                #Folks Finance----------------------------------
+                elif 'Folks Finance' in result:
 
-
-                    elif len(result) == 3:
+                    if appArg[0] == 'ZA==':
+                        result = [result[0], result[1], 'Deposit']
+                    elif appArg[0] == 'cg==':
+                        result = [result[0], result[1], 'Withdrawal']    
+                    elif appArg[0] == 'Yg==':
+                        result = [result[0], result[1], 'Borrow']
+                    elif appArg[0] == 'cmI=':
+                        result = [result[0], result[1], 'Repay']
+                    elif appArg[0] == 'aWI=':
+                        result = [result[0], result[1], 'Increase Borrow']
+                    elif appArg[0] == 'cmM=':
+                        result = [result[0], result[1], 'Reduce Collateral']
+                    elif appArg[0] == 'cGw=':
+                        result = [result[0], result[1], 'Lock & Earn']
+                    elif appArg[0] == 'aWU=':
+                        result = [result[0], result[1], 'Rewards Instant']
+                    elif appArg[0] == 'ZQ==':
+                        result = [result[0], result[1], 'Rewards Staking']
+                    elif appArg[0] == 'Yw==':
+                        result = [result[0], result[1], 'Claim']
+                    elif appArg[0] == 'YWU=':
+                        result = [result[0], result[1], 'Open Account']
                     
-                        try: print(txnRaw['group'])
-                        except: print(txnRaw['id'])
-                        print(result)
-                     
-                        for arg in appArg:
-                            decodedArg = str(base64.b64decode(arg))
-                            
-                                
-                            print(arg + ' - ' + decodedArg)
-                        print('\n')
+                    #if len(result) < 3:
+                    #
+                    #    try: print(txnRaw['group'])
+                    #    except: print(txnRaw['id'])
+                    #    print(result)
+                    # 
+                    #    for arg in appArg:
+                    #        decodedArg = str(base64.b64decode(arg))
+                    #        
+                    #            
+                    #        print(arg + ' - ' + decodedArg)
+                    #    print('\n')
                         
                 #-----------------------------------------
                 else:
@@ -447,6 +471,7 @@ def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB):
     if buyAmount == '' and sellAmount == '':
         txnType = 'Other Expense'
         tradeGroup = 'Network Operation Fees'
+
 
     #-------------------DROP DEFS GO HERE FOR NOW. EXPAND LATER--------------------
     if txnType == 'Deposit' and ('AlgoStake' in tradeGroup or 'The Algo Faucet' in tradeGroup):
