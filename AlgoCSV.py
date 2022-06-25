@@ -1,3 +1,4 @@
+
 #----------#        IMPORTS
 import requests
 import json
@@ -392,9 +393,24 @@ for txnID in txnOrder:
                 elif 'Folks Finance' in groupDef:
                     txns = multiRow['txns']
                     if 'Deposit' in groupDef:
+                        txns[0][8] = 'Folks Finance: Deposit'
+                        slippage = round(float(txns[1][3]) - float(txns[0][1]), 6)
+                        multiRow['groupRows'] = [txns[0]]
                         multiRow = ACSVFunc.escrowTxn(multiRow, 1, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
+                        escrowRow = multiRow['groupRows'][2]
+                        escrowRow[1] = round(float(escrowRow[1]) - slippage, 6)
+                        multiRow['groupRows'] = [multiRow['groupRows'][0], multiRow['groupRows'][1], escrowRow]
+                        
                     elif 'Withdrawal' in groupDef:
+                        txns[1][8] = 'Folks Finance: Withdrawal'
+                        slippage = round(float(txns[0][1]) - float(txns[1][3]), 6)
+                        print(slippage)
+                        multiRow['groupRows'] = [txns[1]]
                         multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
+                        escrowRow = multiRow['groupRows'][1]
+                        escrowRow[3] = round(float(escrowRow[3]) - slippage, 6)
+                        multiRow['groupRows'] = [multiRow['groupRows'][0], escrowRow, multiRow['groupRows'][2]]
+                        
                     elif 'Borrow' in groupDef:
                         multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
                         multiRow = ACSVFunc.escrowTxn(multiRow, 1, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
@@ -409,43 +425,75 @@ for txnID in txnOrder:
                             else:
                                 multiRow = ACSVFunc.escrowTxn(multiRow, i, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
                             i += 1
+                        
                     elif 'Increase Borrow' in groupDef:
                         multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
+                        
                     elif 'Reduce Collateral' in groupDef:
                         multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
+                        
                     elif 'Lock & Earn' in groupDef:
+                        txns[0][0] = 'Spend'
+                        
                         multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
                         stakingRow = txns[1]
                         stakingRow[0] = 'Staking'
                         stakingRow[8] = 'Folks Finance: Rewards'
-                        multiRow['groupRows'] = [stakingRow]
+                        multiRow['groupRows'] = [txns[0], stakingRow]
                         multiRow = ACSVFunc.escrowTxn(multiRow, 2, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
+                        
                     elif 'Rewards Instant' in groupDef:
-                        stakingRow1 = txns[0]
-                        stakingRow2 = txns[1]
-                        stakingRow1[0] = 'Staking'
-                        stakingRow1[8] = 'Folks Finance: Rewards'
-                        stakingRow2[0] = 'Staking'
-                        stakingRow2[8] = 'Folks Finance: Rewards'
-                        multiRow['groupRows'] = [stakingRow1, stakingRow2]
+                        if len(txns) == 3:
+                            stakingRow1 = txns[0]
+                            stakingRow2 = txns[1]
+                            stakingRow1[0] = 'Staking'
+                            stakingRow1[8] = 'Folks Finance: Rewards'
+                            stakingRow2[0] = 'Staking'
+                            stakingRow2[8] = 'Folks Finance: Rewards'
+                            txns[2][0] = 'Spend'
+                            txns[2][8] = 'Folks Finance: Rewards'
+                            multiRow['groupRows'] = [stakingRow1, stakingRow2, txns[2]]
+                        elif len(txns) == 2:
+                            stakingRow1 = txns[0]
+                            stakingRow1[0] = 'Staking'
+                            stakingRow1[8] = 'Folks Finance: Rewards'
+                            txns[1][0] = 'Spend'
+                            txns[1][8] = 'Folks Finance: Rewards'
+                            multiRow['groupRows'] = [stakingRow1, txns[1]]
+                        
                     elif 'Rewards Staking' in groupDef:
                         depositFee = txns[0]
                         depositFee[0] = 'Spend'
                         depositFee[8] = 'Folks Finance: Rewards'
                         multiRow['groupRows'] = [depositFee]
                         multiRow = ACSVFunc.escrowTxn(multiRow, 1, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
+                        
                     elif 'Claim' in groupDef:
                         pass #sorry cant do yet, placeholder
                     elif 'Open Account' in groupDef:
-                        multiRow = ACSVFunc.escrowTxn(multiRow, 0, 'Folks Finance', str('Folks Finance: ' + groupDef[2]))
-                    else:
-                        print(groupDef)
-                        print(multiRow['groupID'])
-                        for txn in txns:
-                            print(txn)
-                        print('\n')
+                        txns[0][0] = 'Spend'
+                        multiRow['groupRows'] = [txns[0]]
+                        
 
-        
+                elif 'Akita Inu' in groupDef:
+                    txns = multiRow['txns']
+                    if 'Token Swap App' in groupDef:
+                        multiRow = ACSVFunc.swapRow(multiRow, txns[0], txns[1], 'Token Bridge', 0.0, 'Akita Inu')
+
+                else:
+                    pass
+                    #----
+                    #txns = multiRow['txns']
+                    #print(groupDef)
+                    #print(multiRow['groupID'])
+                    #for txn in txns:
+                    #    print(txn)
+                    #print('-------')
+                    #if 'groupRows' in multiRow:
+                    #    for txn in multiRow['groupRows']:
+                    #        print(txn)
+                    #print('\n')
+                    #----
 
     ##--------------------------------------------------------
             #write group txns to csv
@@ -453,7 +501,8 @@ for txnID in txnOrder:
                 groupRows = multiRow['groupRows']
             else: groupRows = multiRow['txns']   
             for gRow in groupRows:
-                #print(gRow)
+                #if ', ' in str(gRow[8]) and str(gRow[8]) != "['AlgoFi', 'USDC/STBL LP-AFns']":
+                #    print(gRow)
                 writer.writerow(gRow)
             
             #write rewards from group if any to csv    
@@ -461,7 +510,7 @@ for txnID in txnOrder:
                 writer.writerow(multiRow['rewards'])
             #write combined Net Op Fees to csv
             if 'Network Operation Fees' in multiRow:
-                netOpFeesRow = ['Other Expense', '', '',
+                netOpFeesRow = ['Spend', '', '',
                 multiRow['Network Operation Fees'], 'ALGO', '', '', walletName,
                 'Summed Group Network Fees', str('F-' + multiRow['groupID']), multiRow['date']]
                 writer.writerow(netOpFeesRow)
@@ -511,6 +560,7 @@ for txnID in txnOrder:
             row[4] = 'ALGO'
             row[5] = ''
             row[6] = ''
+
         
         writer.writerow(row)
         
@@ -525,7 +575,8 @@ for txnID in txnOrder:
         if rewardRow != []:
             #write rewards row to csv
             writer.writerow(rewardRow)        
-  
+    #if 'group' not in txnRaw and ', ' in str(row[8]):
+    #    print(row)
 
     
 ACSVFunc.saveDB(algodexTakenDB, 'resources/algodexTakenDB')

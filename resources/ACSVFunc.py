@@ -477,7 +477,7 @@ def txnAsRow(txnRaw, wallet, walletName, groupDB, addressDB, appDB, asaDB):
     if txnType == 'Deposit' and ('AlgoStake' in tradeGroup or 'The Algo Faucet' in tradeGroup):
         txnType = 'Staking'
         tradeGroup = tradeGroup[0]
-    if 'Pact' and 'Rewards' in tradeGroup:
+    if 'Pact' in tradeGroup and 'Rewards' in tradeGroup:
         txnType = 'Staking'
         tradeGroup = 'Pact: Rewards'
 
@@ -873,7 +873,7 @@ def algoDexOrderTaken(multiRow, txnDB, groupDB, asaDB, wallet):
                     closeAsset = 'ALGO'
                     closeAmount = decimal(closeAmount, closeAsset, asaDB)
                     #print(closeAmount, closeAsset)
-                    eRows3 = ['Withdrawal', '', '', closeAmount, closeAsset, '', '', 'AlgoDex - Escrow', 'AlgoDex: Order Taken', tradeRow[9], tradeRow[10]]
+                    eRows3 = ['Withdrawal', '', '', float(closeAmount) + 0.005, closeAsset, 0.005, 'ALGO', 'AlgoDex - Escrow', 'AlgoDex: Order Taken', tradeRow[9], tradeRow[10]]
                     eRows4 = ['Deposit', closeAmount, closeAsset, '', '', '', '', tradeRow[7], 'AlgoDex: Order Taken', tradeRow[9], tradeRow[10]]
                     escrowRows = [eRows3, eRows4]
 
