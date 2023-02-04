@@ -1,6 +1,10 @@
 # AlgoCSV
 A python script to pull the transactions of an Algorand wallet and put them into a CSV file.
 
+currently being rebuilt here:  https://github.com/HashingSlash/sprocketChainTools as recordKeeping
+this version is no longer being worked on
+
+
 Dependancies: Requests
 
 Main features:
