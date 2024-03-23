@@ -23,4 +23,4 @@ dApp Support: Currently supports Yieldly, Tinyman, Algofi. These are the dApps I
 I'm an amateur programmer using this as an exorcise in learning API get requests, so it's not pro-grade by any measure. Also, no tax jurisdiction has been considered. This is not a tax report or financial advice or anything else. This is just a tool that may help you with your record keeping. I make no guarantees. This is my first time using Github too.
 
 
-Donations: ALGO - HSY2V6IMWVOTZB6I6X7DULB7VD6N7MU65QQMN4TVOJCJ4K2DD2KN2J6ZIU
+
